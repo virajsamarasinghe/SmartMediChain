@@ -16,6 +16,8 @@ const orderRoutes = require('./routes/orders');
 const supplierRoutes = require('./routes/suppliers');
 const inventoryRoutes = require('./routes/inventory');
 const analyticsRoutes = require('./routes/analytics');
+const aiRoutes = require('./routes/ai');
+const blockchainRoutes = require('./routes/blockchain');
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -79,6 +81,8 @@ app.use('/api/orders', auth, orderRoutes);
 app.use('/api/suppliers', auth, supplierRoutes);
 app.use('/api/inventory', auth, inventoryRoutes);
 app.use('/api/analytics', auth, analyticsRoutes);
+app.use('/api/ai', aiRoutes);
+app.use('/api/blockchain', blockchainRoutes);
 
 // Error handling middleware
 app.use(notFound);
