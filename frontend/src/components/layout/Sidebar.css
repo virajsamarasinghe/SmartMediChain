@@ -1,0 +1,94 @@
+/* Sidebar styles for our application */
+/* Most styling is done with Tailwind classes */
+
+/* Enhanced smooth transitions */
+.sidebar-transition {
+    transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.sidebar-closed {
+    width: 0 !important;
+    padding: 0 !important;
+    overflow: hidden;
+    visibility: hidden;
+    opacity: 0;
+    transform: translateX(-100%);
+}
+
+/* Mobile optimizations with smooth animations */
+@media (max-width: 768px) {
+    /* Ensure sidebar takes full height and proper positioning on mobile */
+    aside {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100vh;
+        z-index: 30;
+        padding-top: 60px;
+        transition: transform 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    
+    /* Improve sidebar animations on mobile */
+    .sidebar-closed {
+        transform: translateX(-100%);
+        visibility: visible; /* Keep visible for smooth animation */
+        opacity: 1;
+    }
+}
+
+/* Add subtle animations for menu items */
+@keyframes slideInFromLeft {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+/* Stagger animation for menu items */
+aside ul li:nth-child(1) {
+    animation: slideInFromLeft 0.3s ease-out 0.1s both;
+}
+
+aside ul li:nth-child(2) {
+    animation: slideInFromLeft 0.3s ease-out 0.2s both;
+}
+
+aside ul li:nth-child(3) {
+    animation: slideInFromLeft 0.3s ease-out 0.3s both;
+}
+
+aside ul li:nth-child(4) {
+    animation: slideInFromLeft 0.3s ease-out 0.4s both;
+}
+
+aside ul li:nth-child(5) {
+    animation: slideInFromLeft 0.3s ease-out 0.5s both;
+}
+
+/* Smooth hover effects */
+aside ul li a,
+aside ul li button {
+    position: relative;
+    overflow: hidden;
+}
+
+aside ul li a::before,
+aside ul li button::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+    transition: left 0.5s;
+}
+
+aside ul li a:hover::before,
+aside ul li button:hover::before {
+    left: 100%;
+}
