@@ -183,3 +183,8 @@ videos/
 # Lock files (uncomment if you want to ignore them)
 # package-lock.json
 # yarn.lock
+
+# Backend specific
+backend/.env
+backend/uploads/
+backend/logs/

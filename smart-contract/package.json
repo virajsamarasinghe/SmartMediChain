@@ -1,0 +1,29 @@
+{
+  "name": "smartmedichain-contracts",
+  "version": "1.0.0",
+  "description": "Smart contracts for SmartMediChain fraud detection and approval system",
+  "main": "index.js",
+  "scripts": {
+    "compile": "npx hardhat compile",
+    "test": "npx hardhat test",
+    "deploy": "npx hardhat run scripts/deploy.js --network localhost",
+    "node": "npx hardhat node",
+    "clean": "npx hardhat clean"
+  },
+  "devDependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^3.0.0",
+    "hardhat": "^2.17.1"
+  },
+  "dependencies": {
+    "@openzeppelin/contracts": "^4.9.3",
+    "ethers": "^6.7.1"
+  },
+  "keywords": [
+    "blockchain",
+    "smart-contracts",
+    "fraud-detection",
+    "medical-supply-chain"
+  ],
+  "author": "SmartMediChain Team",
+  "license": "MIT"
+}
