@@ -1,0 +1,54 @@
+{
+  "name": "smartmedichain-backend",
+  "version": "1.0.0",
+  "description": "Backend API for SmartMediChain - A blockchain-based medical supply chain management system",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "seed": "node src/seeds/index.js"
+  },
+  "keywords": [
+    "blockchain",
+    "medical",
+    "supply-chain",
+    "express",
+    "mongodb",
+    "healthcare"
+  ],
+  "author": "Viraj Samarasinghe",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^7.5.0",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "morgan": "^1.10.0",
+    "dotenv": "^16.3.1",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "joi": "^17.9.2",
+    "express-rate-limit": "^6.8.1",
+    "compression": "^1.7.4",
+    "multer": "^1.4.5-lts.1",
+    "cloudinary": "^1.40.0",
+    "nodemailer": "^6.9.4",
+    "express-async-errors": "^3.1.1",
+    "uuid": "^9.0.0",
+    "moment": "^2.29.4"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "jest": "^29.6.2",
+    "supertest": "^6.3.3",
+    "eslint": "^8.46.0",
+    "prettier": "^3.0.1"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+}
