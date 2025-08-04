@@ -1,11 +1,6 @@
 # Dockerfile for backend (Node.js)
 FROM node:18-slim
 
-COPY src/ /app/src/
-COPY package.json /app/
-COPY package-lock.json /app/
-
-
 WORKDIR /app
 
 COPY package*.json ./
