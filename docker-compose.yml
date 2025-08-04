@@ -1,0 +1,79 @@
+version: '3.8'
+
+services:
+  mongo:
+    image: mongo:6.0
+    container_name: mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: smartmedichain
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: ./backend
+    container_name: backend
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - NODE_ENV=development
+      - PORT=5000
+      - MONGODB_URI=mongodb://mongo:27017/smartmedichain
+    depends_on:
+      - mongo
+    networks:
+      - smc-net
+
+  ai-model-api:
+    build:
+      context: ./ai-model-api
+    container_name: ai-model-api
+    restart: unless-stopped
+    ports:
+      - "5001:5001"
+    environment:
+      - AI_MODEL_PORT=5001
+    volumes:
+      - ./ai-model-api/models:/app/models
+      - ./ai-model-api/logs:/app/logs
+    networks:
+      - smc-net
+
+  frontend:
+    build:
+      context: ./frontend
+    container_name: frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - PORT=3000
+      - REACT_APP_BACKEND_URL=http://backend:5000
+      - REACT_APP_AI_MODEL_API_URL=http://ai-model-api:5001
+    depends_on:
+      - backend
+      - ai-model-api
+    networks:
+      - smc-net
+
+  smart-contract:
+    build:
+      context: ./smart-contract
+    container_name: smart-contract
+    restart: unless-stopped
+    command: npx hardhat node
+    ports:
+      - "8545:8545"
+    networks:
+      - smc-net
+
+volumes:
+  mongo_data:
+
+networks:
+  smc-net:
+    driver: bridge

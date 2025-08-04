@@ -1,0 +1,12 @@
+# Dockerfile for smart-contract (Hardhat)
+FROM node:18-slim
+
+WORKDIR /app
+
+COPY package*.json ./
+RUN npm install
+
+COPY . .
+
+EXPOSE 8545
+CMD ["npx", "hardhat", "node"]
