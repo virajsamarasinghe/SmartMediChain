@@ -233,7 +233,17 @@ const updateMedicine = async (req, res) => {
 // @access  Private (Creator, Admin)
 const deleteMedicine = async (req, res) => {
   try {
-    const medicine = await Medicine.findById(req.params.id);
+    const { id } = req.params;
+    
+    // Validate MongoDB ObjectId format
+    if (!id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid medicine ID format'
+      });
+    }
+    
+    const medicine = await Medicine.findById(id);
 
     if (!medicine) {
       return res.status(404).json({
@@ -250,17 +260,27 @@ const deleteMedicine = async (req, res) => {
       });
     }
 
-    await Medicine.findByIdAndDelete(req.params.id);
+    await Medicine.findByIdAndDelete(id);
 
-    res.json({
+    // Return a 200 status with success message
+    res.status(200).json({
       success: true,
       message: 'Medicine deleted successfully'
     });
   } catch (error) {
     console.error('Delete medicine error:', error);
+    
+    if (error.name === 'CastError') {
+      return res.status(400).json({
+        success: false,
+        message: 'Invalid medicine ID format'
+      });
+    }
+    
     res.status(500).json({
       success: false,
-      message: 'Server error'
+      message: 'Server error',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined
     });
   }
 };

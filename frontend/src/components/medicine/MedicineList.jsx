@@ -8,9 +8,39 @@ const MedicineList = () => {
     const [editingMedicine, setEditingMedicine] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
 
-    const handleDelete = (id) => {
+    const handleDelete = async (id) => {
+        if (!id) {
+            console.error('Invalid medicine ID:', id);
+            alert('Cannot delete medicine: Invalid ID');
+            return;
+        }
+
+        // Validate MongoDB ObjectId format
+        if (!/^[0-9a-fA-F]{24}$/.test(id)) {
+            console.error('Invalid ObjectId format:', id);
+            alert('Cannot delete medicine: Invalid ID format');
+            return;
+        }
+
         if (window.confirm('Are you sure you want to delete this medicine?')) {
-            deleteMedicine(id);
+            try {
+                const result = await deleteMedicine(id);
+                // Show success message
+                alert('Medicine deleted successfully');
+            } catch (error) {
+                // Show error message with more details
+                console.error('Failed to delete medicine:', error);
+                
+                // More user-friendly error message
+                if (error.message.includes('not authorized')) {
+                    alert('You do not have permission to delete this medicine. Please contact an administrator.');
+                } else if (error.message.includes('not found')) {
+                    alert('This medicine no longer exists. The list will now refresh.');
+                    window.location.reload(); // Force a refresh to update the UI
+                } else {
+                    alert('Failed to delete medicine: ' + (error.message || 'Unknown error'));
+                }
+            }
         }
     };
 
@@ -98,7 +128,9 @@ const MedicineList = () => {
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">
                                                 <div className="text-sm text-gray-900">
-                                                    {medicine.manufacturer}
+                                                    {typeof medicine.manufacturer === 'object' ? 
+                                                        medicine.manufacturer.name || 'Unknown' : 
+                                                        medicine.manufacturer || 'Unknown'}
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 whitespace-nowrap">

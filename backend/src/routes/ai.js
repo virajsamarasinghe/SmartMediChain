@@ -1,6 +1,6 @@
 const express = require('express');
 const router = express.Router();
-const { protect } = require('../middleware/auth');
+const { auth } = require('../middleware/auth');
 const {
     getModelHealth,
     getMedicineDemandPrediction,
@@ -15,14 +15,14 @@ const {
  * @desc    Check AI model health status
  * @access  Private
  */
-router.get('/health', protect, getModelHealth);
+router.get('/health', auth, getModelHealth);
 
 /**
  * @route   GET /api/ai/medicine/:medicineId/demand
  * @desc    Get demand prediction for a specific medicine
  * @access  Private
  */
-router.get('/medicine/:medicineId/demand', protect, getMedicineDemandPrediction);
+router.get('/medicine/:medicineId/demand', auth, getMedicineDemandPrediction);
 
 /**
  * @route   GET /api/ai/inventory/optimization
@@ -31,7 +31,7 @@ router.get('/medicine/:medicineId/demand', protect, getMedicineDemandPrediction)
  * @query   category - Filter by medicine category
  * @query   lowStock - Filter low stock medicines (true/false)
  */
-router.get('/inventory/optimization', protect, getInventoryOptimization);
+router.get('/inventory/optimization', auth, getInventoryOptimization);
 
 /**
  * @route   GET /api/ai/reorder/suggestions
@@ -39,7 +39,7 @@ router.get('/inventory/optimization', protect, getInventoryOptimization);
  * @access  Private
  * @query   threshold - Stock threshold for reorder suggestions (default: 20)
  */
-router.get('/reorder/suggestions', protect, getReorderSuggestions);
+router.get('/reorder/suggestions', auth, getReorderSuggestions);
 
 /**
  * @route   POST /api/ai/predictions/batch
@@ -47,7 +47,7 @@ router.get('/reorder/suggestions', protect, getReorderSuggestions);
  * @access  Private
  * @body    { medicineIds: [id1, id2, ...] }
  */
-router.post('/predictions/batch', protect, getBatchPredictions);
+router.post('/predictions/batch', auth, getBatchPredictions);
 
 /**
  * @route   GET /api/ai/insights
@@ -55,6 +55,6 @@ router.post('/predictions/batch', protect, getBatchPredictions);
  * @access  Private
  * @query   timeRange - Time range for analysis (default: 30d)
  */
-router.get('/insights', protect, getAIInsights);
+router.get('/insights', auth, getAIInsights);
 
 module.exports = router;

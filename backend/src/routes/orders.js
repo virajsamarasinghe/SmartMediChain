@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Order = require('../models/Order');
 const Medicine = require('../models/Medicine');
-const { authorize } = require('../middleware/auth');
+const { auth, authorize } = require('../middleware/auth');
 
 // @desc    Get all orders
 // @route   GET /api/orders
@@ -357,10 +357,10 @@ const cancelOrder = async (req, res) => {
 };
 
 // Routes
-router.get('/', getOrders);
-router.get('/:id', getOrder);
-router.post('/', createOrder);
-router.put('/:id/status', updateOrderStatus);
-router.put('/:id/cancel', cancelOrder);
+router.get('/', auth, getOrders);
+router.get('/:id', auth, getOrder);
+router.post('/', auth, createOrder);
+router.put('/:id/status', auth, updateOrderStatus);
+router.put('/:id/cancel', auth, cancelOrder);
 
 module.exports = router;

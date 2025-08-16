@@ -1,42 +1,53 @@
 import React, { createContext, useState, useEffect } from 'react';
+import { authService } from '../services/authService';
 
 export const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
     const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(false);
+    const [loading, setLoading] = useState(true);
 
-    // For frontend only - mocked authentication
     useEffect(() => {
         // Check if there's a user in localStorage (for persistence)
-        const savedUser = localStorage.getItem('user');
-        if (savedUser) {
-            setUser(JSON.parse(savedUser));
+        const savedUser = authService.getUser();
+        if (savedUser && authService.isAuthenticated()) {
+            setUser(savedUser);
         }
         setLoading(false);
     }, []);
 
-    const login = (email, password) => {
-        // Mock successful login for frontend testing
-        const mockUser = {
-            id: '1',
-            email,
-            name: 'Test User',
-        };
-        
-        setUser(mockUser);
-        localStorage.setItem('user', JSON.stringify(mockUser));
-        localStorage.setItem('token', 'mock-jwt-token');
-        return true;
+    const login = async (email, password) => {
+        try {
+            setLoading(true);
+            const response = await authService.login(email, password);
+            
+            if (response.success && response.data.user) {
+                setUser(response.data.user);
+                return true;
+            }
+            return false;
+        } catch (error) {
+            console.error('Login error:', error);
+            // Clear any existing auth data on login failure
+            authService.logout();
+            setUser(null);
+            return false;
+        } finally {
+            setLoading(false);
+        }
     };
 
-    const signOut = () => {
-        // Mock logout
-        localStorage.removeItem('user');
-        localStorage.removeItem('token');
-        setUser(null);
-        // Navigation will be handled by the component using this context
-        return true;
+    const signOut = async () => {
+        try {
+            await authService.logout();
+            setUser(null);
+            return true;
+        } catch (error) {
+            console.error('Logout error:', error);
+            // Clear local data even if API call fails
+            setUser(null);
+            return true;
+        }
     };
 
     return (

@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 
 const Sidebar = ({ isOpen }) => {
-    const { signOut } = useContext(AuthContext);
+    const { user, signOut } = useContext(AuthContext);
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -65,6 +65,23 @@ const Sidebar = ({ isOpen }) => {
                             Place Order
                         </Link>
                     </li>
+                    {user && user.role === 'admin' && (
+                        <li>
+                            <Link 
+                                to="/user-management" 
+                                className={`flex items-center py-3 px-4 rounded-lg transition-all duration-300 hover:transform hover:scale-105 ${
+                                    location.pathname === '/user-management'
+                                        ? 'bg-blue-800 text-white shadow-lg border-l-4 border-blue-300' 
+                                        : 'text-blue-100 hover:bg-blue-600 hover:text-white hover:shadow-md'
+                                }`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                                </svg>
+                                User Management
+                            </Link>
+                        </li>
+                    )}
                     <li>
                         <Link 
                             to="/profile" 

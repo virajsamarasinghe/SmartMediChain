@@ -1,57 +1,64 @@
 const { ethers } = require("hardhat");
+const fs = require("fs");
+const path = require("path");
 
 async function main() {
-    console.log("Deploying SmartMediChain Fraud Detection Contract...");
+  console.log("Deploying SmartMediChainFraudDetection contract...");
 
-    // Get the contract factory
-    const SmartMediChainFraudDetection = await ethers.getContractFactory("SmartMediChainFraudDetection");
+  // Get the ContractFactory and Signers here.
+  const [deployer] = await ethers.getSigners();
+  console.log("Deploying contracts with the account:", deployer.address);
+  console.log("Account balance:", (await ethers.provider.getBalance(deployer.address)).toString());
 
-    // Deploy the contract
-    const fraudDetection = await SmartMediChainFraudDetection.deploy();
+  // Deploy the contract
+  const SmartMediChainFraudDetection = await ethers.getContractFactory("SmartMediChainFraudDetection");
+  const contract = await SmartMediChainFraudDetection.deploy();
 
-    await fraudDetection.waitForDeployment();
+  await contract.waitForDeployment();
 
-    const contractAddress = await fraudDetection.getAddress();
-    console.log("SmartMediChainFraudDetection deployed to:", contractAddress);
+  const contractAddress = await contract.getAddress();
+  console.log("SmartMediChainFraudDetection deployed to:", contractAddress);
 
-    // Get the deployer account
-    const [deployer] = await ethers.getSigners();
-    console.log("Deployed by:", deployer.address);
+  // Save deployment info
+  const deploymentInfo = {
+    contractAddress: contractAddress,
+    deployerAddress: deployer.address,
+    deployedAt: new Date().toISOString(),
+    network: "localhost",
+    blockNumber: await ethers.provider.getBlockNumber()
+  };
 
-    // Setup additional accounts with roles
-    const accounts = await ethers.getSigners();
-    
-    if (accounts.length > 1) {
-        // Add managers
-        for (let i = 1; i <= Math.min(4, accounts.length - 1); i++) {
-            await fraudDetection.addManager(accounts[i].address);
-            console.log(`Added manager: ${accounts[i].address}`);
-        }
+  // Create deployment directory if it doesn't exist
+  const deploymentDir = path.join(__dirname, "../deployments");
+  if (!fs.existsSync(deploymentDir)) {
+    fs.mkdirSync(deploymentDir, { recursive: true });
+  }
 
-        // Add AI Oracle (last account)
-        if (accounts.length > 5) {
-            await fraudDetection.addAIOracle(accounts[accounts.length - 1].address);
-            console.log(`Added AI Oracle: ${accounts[accounts.length - 1].address}`);
-        }
-    }
+  // Save deployment info
+  fs.writeFileSync(
+    path.join(deploymentDir, "SmartMediChainFraudDetection.json"),
+    JSON.stringify(deploymentInfo, null, 2)
+  );
 
-    // Save deployment info
-    const deploymentInfo = {
-        contractAddress: contractAddress,
-        deployer: deployer.address,
-        deploymentTime: new Date().toISOString(),
-        network: "localhost"
-    };
+  console.log("Deployment info saved to deployments/SmartMediChainFraudDetection.json");
 
-    console.log("\nDeployment Info:");
-    console.log(JSON.stringify(deploymentInfo, null, 2));
+  // Grant AI_ORACLE_ROLE to the deployer for testing
+  const AI_ORACLE_ROLE = await contract.AI_ORACLE_ROLE();
+  await contract.grantRole(AI_ORACLE_ROLE, deployer.address);
+  console.log("Granted AI_ORACLE_ROLE to deployer for testing");
 
-    return fraudDetection;
+  return contractAddress;
 }
 
+// We recommend this pattern to be able to use async/await everywhere
+// and properly handle errors.
 main()
-    .then(() => process.exit(0))
-    .catch((error) => {
-        console.error(error);
-        process.exit(1);
-    });
+  .then((contractAddress) => {
+    console.log("Deployment completed successfully!");
+    console.log("Contract Address:", contractAddress);
+    process.exit(0);
+  })
+  .catch((error) => {
+    console.error("Deployment failed:", error);
+    process.exit(1);
+  });

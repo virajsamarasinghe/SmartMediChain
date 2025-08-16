@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   mongo:
     image: mongo:6.0
@@ -11,6 +9,8 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+    networks:
+      - smc-net
 
   backend:
     build:
@@ -18,13 +18,24 @@ services:
     container_name: backend
     restart: unless-stopped
     ports:
-      - "5000:5000"
+      - "3001:3001"
     environment:
       - NODE_ENV=development
-      - PORT=5000
+      - PORT=3001
       - MONGODB_URI=mongodb://mongo:27017/smartmedichain
+      - BLOCKCHAIN_RPC_URL=http://smart-contract:8545
+      - AI_MODEL_API_URL=http://ai-model-api:5001
+      - JWT_SECRET=smartmedichain-super-secret-jwt-key-for-development-only
+      - JWT_EXPIRE=7d
+      - JWT_REFRESH_SECRET=smartmedichain-refresh-token-secret-for-development
+      - JWT_REFRESH_EXPIRE=30d
+      - BCRYPT_SALT_ROUNDS=12
+      - CORS_ORIGIN=http://localhost:3000
     depends_on:
       - mongo
+      - smart-contract
+    volumes:
+      - smart_contract_artifacts:/app/smart-contract/artifacts
     networks:
       - smc-net
 
@@ -52,8 +63,10 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
-      - REACT_APP_BACKEND_URL=http://backend:5000
-      - REACT_APP_AI_MODEL_API_URL=http://ai-model-api:5001
+      # For browser access
+      - REACT_APP_API_URL=http://localhost:3001/api
+      - REACT_APP_BACKEND_URL=http://localhost:3001
+      - REACT_APP_AI_MODEL_API_URL=http://localhost:5001
     depends_on:
       - backend
       - ai-model-api
@@ -65,14 +78,17 @@ services:
       context: ./smart-contract
     container_name: smart-contract
     restart: unless-stopped
-    command: npx hardhat node
+    command: ./start.sh
     ports:
       - "8545:8545"
+    volumes:
+      - smart_contract_artifacts:/app/artifacts
     networks:
       - smc-net
 
 volumes:
   mongo_data:
+  smart_contract_artifacts:
 
 networks:
   smc-net:

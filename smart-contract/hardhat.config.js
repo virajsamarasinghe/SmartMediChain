@@ -19,6 +19,7 @@ module.exports = {
       // Hardhat network configuration
     }
   },
+  defaultNetwork: "hardhat",
   paths: {
     sources: "./contracts",
     tests: "./test",

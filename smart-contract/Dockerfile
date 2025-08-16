@@ -8,5 +8,8 @@ RUN npm install
 
 COPY . .
 
+# Make the startup script executable
+RUN chmod +x start.sh
+
 EXPOSE 8545
-CMD ["npx", "hardhat", "node"]
+CMD ["./start.sh"]

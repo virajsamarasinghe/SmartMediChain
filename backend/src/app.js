@@ -22,7 +22,7 @@ const blockchainRoutes = require('./routes/blockchain');
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
 const notFound = require('./middleware/notFound');
-const auth = require('./middleware/auth');
+const { auth } = require('./middleware/auth');
 
 // Import config
 const connectDB = require('./config/database');
@@ -38,8 +38,11 @@ app.use(helmet());
 
 // CORS configuration
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  credentials: true
+  origin: ['http://localhost:3000', 'http://frontend:3000', process.env.CORS_ORIGIN].filter(Boolean),
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  exposedHeaders: ['Content-Length', 'X-Total-Count']
 }));
 
 // Rate limiting

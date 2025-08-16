@@ -67,7 +67,7 @@ const seedUsers = async () => {
         name: 'PharmaTech Manufacturing',
         email: 'manufacturer@pharmatech.com',
         password: 'manufacturer123',
-        role: 'manufacturer',
+        role: 'supplier',
         isVerified: true,
         organization: {
           name: 'PharmaTech Manufacturing Ltd',
@@ -122,7 +122,10 @@ const seedUsers = async () => {
       }
     ];
 
-    await User.insertMany(users);
+    // Insert users individually to trigger the pre-save hook
+    for (const userData of users) {
+      await User.create(userData);
+    }
     console.log('✅ Users seeded successfully');
     
     return await User.find({});
@@ -137,8 +140,8 @@ const seedMedicines = async (users) => {
     await Medicine.deleteMany({});
     console.log('🗑️  Existing medicines cleared');
 
-    const supplier = users.find(u => u.role === 'supplier');
-    const manufacturer = users.find(u => u.role === 'manufacturer');
+    const supplier = users.find(u => u.role === 'supplier' && u.email !== 'manufacturer@pharmatech.com');
+    const manufacturer = users.find(u => u.role === 'supplier' && u.email === 'manufacturer@pharmatech.com');
 
     const medicines = [
       {
@@ -372,6 +375,7 @@ const seedOrders = async (users, medicines) => {
 
     const orders = [
       {
+        orderNumber: `ORD-20240101-001`,
         orderType: 'purchase',
         customer: hospital._id,
         supplier: supplier._id,
@@ -421,6 +425,7 @@ const seedOrders = async (users, medicines) => {
         createdBy: hospital._id
       },
       {
+        orderNumber: `ORD-20240102-002`,
         orderType: 'purchase',
         customer: pharmacy._id,
         supplier: supplier._id,
