@@ -49,7 +49,7 @@ const ApprovalManagement = () => {
     
     try {
       await axios.put(
-        `${API_URL}/api/approvals/${selectedApproval._id}/approve`, 
+        `${API_URL}/approvals/${selectedApproval._id}/approve`, 
         { comments },
         { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );
@@ -77,7 +77,7 @@ const ApprovalManagement = () => {
     
     try {
       await axios.put(
-        `${API_URL}/api/approvals/${selectedApproval._id}/reject`, 
+        `${API_URL}/approvals/${selectedApproval._id}/reject`, 
         { comments },
         { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
       );

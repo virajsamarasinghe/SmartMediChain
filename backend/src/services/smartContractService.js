@@ -290,17 +290,54 @@ class SmartContractService {
         this.ensureInitialized();
 
         try {
+            console.log('Submitting fraud detection:', { orderId, fraudResult });
+
+            if (!fraudResult) {
+                throw new Error('Fraud result is required');
+            }
+
             const { isFraud, riskLevel, confidenceScore, reasons } = fraudResult;
+
+            // Validate required fields
+            if (typeof isFraud !== 'boolean') {
+                throw new Error('isFraud must be a boolean');
+            }
+            if (typeof confidenceScore !== 'number' || confidenceScore < 0 || confidenceScore > 100) {
+                throw new Error('confidenceScore must be a number between 0 and 100');
+            }
 
             // Map risk level string to enum value
             const riskLevelEnum = this.mapRiskLevel(riskLevel);
 
-            const tx = await this.contract.submitFraudDetection(
+            console.log('Mapped values:', {
                 orderId,
                 isFraud,
                 riskLevelEnum,
                 confidenceScore,
-                reasons || []
+                reasons: reasons || []
+            });
+
+            // Ensure proper type conversion for smart contract
+            const contractOrderId = BigInt(orderId);
+            const contractIsFraud = Boolean(isFraud);
+            const contractRiskLevel = Number(riskLevelEnum);
+            const contractConfidenceScore = BigInt(Math.floor(confidenceScore));
+            const contractReasons = Array.isArray(reasons) ? reasons : [];
+
+            console.log('Contract parameters:', {
+                contractOrderId: contractOrderId.toString(),
+                contractIsFraud,
+                contractRiskLevel,
+                contractConfidenceScore: contractConfidenceScore.toString(),
+                contractReasons
+            });
+
+            const tx = await this.contract.submitFraudDetection(
+                contractOrderId,
+                contractIsFraud,
+                contractRiskLevel,
+                contractConfidenceScore,
+                contractReasons
             );
 
             const receipt = await tx.wait();
@@ -492,6 +529,11 @@ class SmartContractService {
      * @returns {number} Enum value
      */
     mapRiskLevel(riskLevel) {
+        if (!riskLevel || typeof riskLevel !== 'string') {
+            console.warn('Invalid risk level provided:', riskLevel, 'defaulting to LOW');
+            return 0; // Default to LOW
+        }
+
         const riskLevelMap = {
             'LOW': 0,
             'MEDIUM': 1,

@@ -26,7 +26,7 @@ const OrderManagement = () => {
 
             if (filter.status) queryParams.append('status', filter.status);
 
-            const response = await axios.get(`${API_URL}/api/orders?${queryParams}`, {
+            const response = await axios.get(`${API_URL}/orders?${queryParams}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem('token')}`
                 }
@@ -64,7 +64,7 @@ const OrderManagement = () => {
         if (!selectedOrder) return;
 
         try {
-            const response = await axios.delete(`${API_URL}/api/orders/${selectedOrder._id}`, {
+            const response = await axios.delete(`${API_URL}/orders/${selectedOrder._id}`, {
                 headers: {
                     Authorization: `Bearer ${localStorage.getItem('token')}`
                 }

@@ -21,7 +21,7 @@ const Dashboard = () => {
         if (isApprovalManager) {
             const fetchPendingApprovals = async () => {
                 try {
-                    const response = await axios.get(`${API_URL}/api/approvals?status=pending`, {
+                    const response = await axios.get(`${API_URL}/approvals?status=pending`, {
                         headers: {
                             Authorization: `Bearer ${localStorage.getItem('token')}`
                         }

@@ -285,7 +285,7 @@ const PlaceOrder = () => {
             } 
             // For API-based orders
             else if (selectedOrderToDelete._id) {
-                const response = await axios.delete(`${API_URL}/api/orders/${selectedOrderToDelete._id}`, {
+                const response = await axios.delete(`${API_URL}/orders/${selectedOrderToDelete._id}`, {
                     headers: {
                         Authorization: `Bearer ${localStorage.getItem('token')}`
                     }

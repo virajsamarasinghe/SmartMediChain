@@ -312,14 +312,19 @@ class BlockchainController {
             // Use the real AI model service for fraud detection
             const aiResult = await AIModelService.analyzeOrderForFraud(orderData);
 
+            console.log('AI fraud detection raw result:', JSON.stringify(aiResult, null, 2));
+
             if (aiResult.success) {
-                return {
+                const mappedResult = {
                     isFraud: aiResult.data.is_fraud,
                     riskLevel: aiResult.data.risk_level,
                     reasons: aiResult.data.reasons,
                     confidenceScore: aiResult.data.confidence_score,
                     timestamp: new Date().toISOString()
                 };
+
+                console.log('Mapped AI result:', JSON.stringify(mappedResult, null, 2));
+                return mappedResult;
             } else {
                 // Fallback to basic rule-based detection if AI model fails
                 console.warn('AI fraud detection failed, using fallback logic:', aiResult.error);

@@ -1,7 +1,7 @@
 import axios from 'axios';
-import { TOKEN_KEY, REFRESH_TOKEN_KEY } from '../config';
+import { TOKEN_KEY, REFRESH_TOKEN_KEY, API_URL } from '../config';
 
-const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
+const API_BASE_URL = API_URL;
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -53,7 +53,7 @@ export const authService = {
    */
   async login(email, password) {
     try {
-      const response = await apiClient.post('/api/auth/login', {
+      const response = await apiClient.post('/auth/login', {
         email,
         password
       });
@@ -83,7 +83,7 @@ export const authService = {
    */
   async register(userData) {
     try {
-      const response = await apiClient.post('/api/auth/register', userData);
+      const response = await apiClient.post('/auth/register', userData);
 
       if (response.success && response.data) {
         localStorage.setItem(TOKEN_KEY, response.data.token);
@@ -105,7 +105,7 @@ export const authService = {
   async logout() {
     try {
       const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-      await apiClient.post('/api/auth/logout', { refreshToken });
+      await apiClient.post('/auth/logout', { refreshToken });
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -120,7 +120,7 @@ export const authService = {
    */
   async getCurrentUser() {
     try {
-      const response = await apiClient.get('/api/auth/me');
+      const response = await apiClient.get('/auth/me');
       return response;
     } catch (error) {
       throw error;
@@ -132,7 +132,7 @@ export const authService = {
    */
   async changePassword(currentPassword, newPassword) {
     try {
-      const response = await apiClient.put('/api/auth/change-password', {
+      const response = await apiClient.put('/auth/change-password', {
         currentPassword,
         newPassword
       });
@@ -152,7 +152,7 @@ export const authService = {
         throw new Error('No refresh token available');
       }
 
-      const response = await apiClient.post('/api/auth/refresh', { refreshToken });
+      const response = await apiClient.post('/auth/refresh', { refreshToken });
 
       if (response.success && response.data) {
         localStorage.setItem(TOKEN_KEY, response.data.token);

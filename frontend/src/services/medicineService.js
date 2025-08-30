@@ -49,7 +49,7 @@ apiClient.interceptors.response.use(
       console.error('Status:', error.response.status);
       console.error('Headers:', error.response.headers);
       console.error('Data:', error.response.data);
-      
+
       // Specific error handling for different status codes
       if (error.response.status === 401) {
         console.error('Authentication error: User not authenticated or token expired');
@@ -59,7 +59,7 @@ apiClient.interceptors.response.use(
           window.location.href = '/login';
           return Promise.reject({ message: 'Your session has expired. Please login again.' });
         }
-      } 
+      }
       else if (error.response.status === 403) {
         console.error('Authorization error: User does not have permission');
       }
@@ -132,11 +132,11 @@ export const medicineService = {
       if (!id || typeof id !== 'string' || !/^[0-9a-fA-F]{24}$/.test(id)) {
         throw new Error(`Invalid medicine ID format: ${id}`);
       }
-      
+
       // Add a timeout to the request to prevent hanging
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
-      
+
       try {
         const response = await apiClient.delete(`/medicines/${id}`, {
           signal: controller.signal
