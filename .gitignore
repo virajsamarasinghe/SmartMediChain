@@ -158,7 +158,7 @@ mnemonic.txt
 *.pkl
 *.h5
 *.model
-models/
+ai-model-api/models/
 checkpoints/
 
 # Database
