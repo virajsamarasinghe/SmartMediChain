@@ -8,10 +8,13 @@ import Profile from './pages/Profile';
 import Notifications from './pages/Notifications';
 import Settings from './pages/Settings';
 import UserManagement from './pages/UserManagement';
+import ApprovalsPage from './pages/ApprovalsPage';
+import BlockchainValidationPage from './pages/BlockchainValidation';
 import NotFound from './pages/NotFound';
 import Layout from './components/layout/Layout';
 import ProtectedRoute from './components/common/ProtectedRoute';
 import AdminRoute from './components/common/AdminRoute';
+import ManagerRoute from './components/common/ManagerRoute';
 
 const AppRoutes = () => {
     return (
@@ -54,6 +57,18 @@ const AppRoutes = () => {
                         <AdminRoute>
                             <Layout><UserManagement /></Layout>
                         </AdminRoute>
+                    </ProtectedRoute>
+                } />
+                <Route path="/approvals" element={
+                    <ProtectedRoute>
+                        <ManagerRoute>
+                            <Layout><ApprovalsPage /></Layout>
+                        </ManagerRoute>
+                    </ProtectedRoute>
+                } />
+                <Route path="/blockchain-validation" element={
+                    <ProtectedRoute>
+                        <Layout><BlockchainValidationPage /></Layout>
                     </ProtectedRoute>
                 } />
                 <Route path="*" element={<NotFound />} />

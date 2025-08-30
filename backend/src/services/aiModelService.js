@@ -192,7 +192,7 @@ class AIModelService {
      */
     getSeasonFactor() {
         const month = new Date().getMonth() + 1; // 1-12
-        
+
         // Simple seasonal factors (can be customized based on your domain knowledge)
         const seasonalFactors = {
             1: 1.2,  // January - winter season, higher demand
@@ -218,13 +218,13 @@ class AIModelService {
     async batchPredict(medicinesData) {
         try {
             const predictions = [];
-            
+
             for (const medicine of medicinesData) {
                 const prediction = await this.getMedicineDemandPrediction(
                     medicine.id,
                     medicine.historicalData
                 );
-                
+
                 if (prediction.success) {
                     predictions.push({
                         medicineId: medicine.id,
@@ -252,7 +252,7 @@ class AIModelService {
     async getReorderSuggestions(medicines) {
         try {
             const inventoryPredictions = await this.getInventoryRecommendations(medicines);
-            
+
             if (!inventoryPredictions.success) {
                 return inventoryPredictions;
             }
@@ -289,9 +289,72 @@ class AIModelService {
     calculatePriority(prediction) {
         const stockRatio = prediction.current_stock / prediction.predicted_optimal_stock;
         const confidenceWeight = prediction.confidence;
-        
+
         // Lower stock ratio and higher confidence = higher priority
         return (1 - stockRatio) * confidenceWeight * 100;
+    }
+
+    /**
+     * Predict fraud detection for procurement orders
+     */
+    async predictFraudDetection(orderData) {
+        try {
+            const response = await this.client.post('/predict/fraud-detection', orderData);
+
+            return {
+                success: true,
+                data: response.data.result,
+                timestamp: response.data.timestamp
+            };
+
+        } catch (error) {
+            console.error('Fraud detection prediction failed:', error);
+            return {
+                success: false,
+                error: error.response?.data?.message || error.message,
+                data: {
+                    is_fraud: false,
+                    risk_level: 'LOW',
+                    confidence_score: 50,
+                    reasons: ['AI model unavailable - using fallback']
+                }
+            };
+        }
+    }
+
+    /**
+     * Analyze order for fraud patterns
+     */
+    async analyzeOrderForFraud(orderData) {
+        try {
+            // Prepare features for fraud detection model
+            const features = {
+                ordered_quantity: orderData.quantity || 0,
+                current_stock: orderData.currentStock || 0,
+                min_required: orderData.minRequired || 0,
+                max_capacity: orderData.maxCapacity || 1000,
+                unit_cost: orderData.pricePerUnit || 0,
+                avg_usage_per_day: orderData.avgUsagePerDay || 10,
+                restock_lead_time: orderData.restockLeadTime || 7,
+                medicine_name: orderData.medicineName || '',
+                avg_market_price: orderData.avgMarketPrice || orderData.pricePerUnit || 0
+            };
+
+            return await this.predictFraudDetection(features);
+
+        } catch (error) {
+            console.error('Order fraud analysis failed:', error);
+            return {
+                success: false,
+                error: error.message,
+                data: {
+                    is_fraud: false,
+                    risk_level: 'LOW',
+                    confidence_score: 50,
+                    reasons: ['Analysis failed - using safe default']
+                }
+            };
+        }
     }
 }
 

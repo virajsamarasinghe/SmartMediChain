@@ -27,7 +27,7 @@ apiClient.interceptors.response.use(
   }
 );
 
-  // Add auth token to requests
+// Add auth token to requests
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem(TOKEN_KEY);
@@ -41,19 +41,25 @@ apiClient.interceptors.request.use(
   }
 );
 
+// Helper function to get auth headers
+export const getAuthHeader = () => {
+  const token = localStorage.getItem(TOKEN_KEY);
+  return token ? { Authorization: `Bearer ${token}` } : {};
+};
+
 export const authService = {
   /**
    * Login user
    */
   async login(email, password) {
     try {
-      const response = await apiClient.post('/auth/login', {
+      const response = await apiClient.post('/api/auth/login', {
         email,
         password
       });
-      
+
       console.log('Login response:', response);
-      
+
       if (response.success && response.data) {
         console.log('Setting localStorage items with token:', response.data.token);
         localStorage.setItem(TOKEN_KEY, response.data.token);
@@ -64,7 +70,7 @@ export const authService = {
       } else {
         console.error('Login response missing success or data:', response);
       }
-      
+
       return response;
     } catch (error) {
       console.error('Login error in service:', error);
@@ -77,8 +83,8 @@ export const authService = {
    */
   async register(userData) {
     try {
-      const response = await apiClient.post('/auth/register', userData);
-      
+      const response = await apiClient.post('/api/auth/register', userData);
+
       if (response.success && response.data) {
         localStorage.setItem(TOKEN_KEY, response.data.token);
         localStorage.setItem('user', JSON.stringify(response.data.user));
@@ -86,7 +92,7 @@ export const authService = {
           localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refreshToken);
         }
       }
-      
+
       return response;
     } catch (error) {
       throw error;
@@ -99,7 +105,7 @@ export const authService = {
   async logout() {
     try {
       const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
-      await apiClient.post('/auth/logout', { refreshToken });
+      await apiClient.post('/api/auth/logout', { refreshToken });
     } catch (error) {
       console.error('Logout error:', error);
     } finally {
@@ -114,7 +120,7 @@ export const authService = {
    */
   async getCurrentUser() {
     try {
-      const response = await apiClient.get('/auth/me');
+      const response = await apiClient.get('/api/auth/me');
       return response;
     } catch (error) {
       throw error;
@@ -126,7 +132,7 @@ export const authService = {
    */
   async changePassword(currentPassword, newPassword) {
     try {
-      const response = await apiClient.put('/auth/change-password', {
+      const response = await apiClient.put('/api/auth/change-password', {
         currentPassword,
         newPassword
       });
@@ -146,13 +152,13 @@ export const authService = {
         throw new Error('No refresh token available');
       }
 
-      const response = await apiClient.post('/auth/refresh', { refreshToken });
-      
+      const response = await apiClient.post('/api/auth/refresh', { refreshToken });
+
       if (response.success && response.data) {
         localStorage.setItem(TOKEN_KEY, response.data.token);
         localStorage.setItem(REFRESH_TOKEN_KEY, response.data.refreshToken);
       }
-      
+
       return response;
     } catch (error) {
       localStorage.removeItem(TOKEN_KEY);

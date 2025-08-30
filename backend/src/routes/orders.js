@@ -356,11 +356,54 @@ const cancelOrder = async (req, res) => {
   }
 };
 
+// @desc    Delete order (permanently remove from database)
+// @route   DELETE /api/orders/:id
+// @access  Private (Admin only)
+const deleteOrder = async (req, res) => {
+  try {
+    const order = await Order.findById(req.params.id);
+    
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: 'Order not found'
+      });
+    }
+
+    // Check authorization - only admin can delete orders
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Not authorized to delete orders - admin access required'
+      });
+    }
+
+    // Log the deletion action
+    console.log(`Order ${order._id} deleted by admin ${req.user.id} on ${new Date().toISOString()}`);
+
+    // Delete the order
+    await Order.findByIdAndDelete(req.params.id);
+
+    res.json({
+      success: true,
+      message: 'Order permanently deleted',
+      data: null
+    });
+  } catch (error) {
+    console.error('Delete order error:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error'
+    });
+  }
+};
+
 // Routes
 router.get('/', auth, getOrders);
 router.get('/:id', auth, getOrder);
 router.post('/', auth, createOrder);
 router.put('/:id/status', auth, updateOrderStatus);
 router.put('/:id/cancel', auth, cancelOrder);
+router.delete('/:id', auth, authorize('admin'), deleteOrder);
 
 module.exports = router;

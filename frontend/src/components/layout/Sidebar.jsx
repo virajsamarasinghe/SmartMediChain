@@ -7,6 +7,9 @@ const Sidebar = ({ isOpen }) => {
     const location = useLocation();
     const navigate = useNavigate();
 
+    // Check if user has approval manager role
+    const isApprovalManager = user?.role && ['operations_manager', 'compliance_manager', 'finance_manager', 'senior_manager'].includes(user.role);
+
     const handleSignOut = () => {
         signOut();
         navigate('/');
@@ -35,6 +38,8 @@ const Sidebar = ({ isOpen }) => {
                             Dashboard
                         </Link>
                     </li>
+
+                    {/* Show medicines management to all users */}
                     <li>
                         <Link 
                             to="/medicine-management" 
@@ -50,21 +55,44 @@ const Sidebar = ({ isOpen }) => {
                             Medicines
                         </Link>
                     </li>
+
+                    {/* Only show order medicines if not an approval manager */}
+                    {!isApprovalManager && (
+                        <li>
+                            <Link 
+                                to="/order-medicines" 
+                                className={`flex items-center py-3 px-4 rounded-lg transition-all duration-300 hover:transform hover:scale-105 ${
+                                    location.pathname === '/order-medicines'
+                                        ? 'bg-blue-800 text-white shadow-lg border-l-4 border-blue-300' 
+                                        : 'text-blue-100 hover:bg-blue-600 hover:text-white hover:shadow-md'
+                                }`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                </svg>
+                                Place Order
+                            </Link>
+                        </li>
+                    )}
+
+                    {/* Blockchain Validation - Show to all users */}
                     <li>
                         <Link 
-                            to="/order-medicines" 
+                            to="/blockchain-validation" 
                             className={`flex items-center py-3 px-4 rounded-lg transition-all duration-300 hover:transform hover:scale-105 ${
-                                location.pathname === '/order-medicines'
+                                location.pathname === '/blockchain-validation'
                                     ? 'bg-blue-800 text-white shadow-lg border-l-4 border-blue-300' 
                                     : 'text-blue-100 hover:bg-blue-600 hover:text-white hover:shadow-md'
                             }`}
                         >
                             <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 11V7a4 4 0 00-8 0v4M5 9h14l1 12H4L5 9z" />
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
                             </svg>
-                            Place Order
+                            Verify Blockchain
                         </Link>
                     </li>
+
+                    {/* Only show User Management to admin */}
                     {user && user.role === 'admin' && (
                         <li>
                             <Link 
@@ -82,6 +110,32 @@ const Sidebar = ({ isOpen }) => {
                             </Link>
                         </li>
                     )}
+                    
+                    {/* Approval Management - Only show for manager roles */}
+                    {isApprovalManager && (
+                        <li>
+                            <Link 
+                                to="/approvals" 
+                                className={`flex items-center py-3 px-4 rounded-lg transition-all duration-300 hover:transform hover:scale-105 ${
+                                    location.pathname === '/approvals'
+                                        ? 'bg-blue-800 text-white shadow-lg border-l-4 border-blue-300' 
+                                        : 'text-blue-100 hover:bg-blue-600 hover:text-white hover:shadow-md'
+                                }`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span className="flex items-center">
+                                    Approvals
+                                    <span className="bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center ml-2">
+                                        !
+                                    </span>
+                                </span>
+                            </Link>
+                        </li>
+                    )}
+
+                    {/* Profile link for all users */}
                     <li>
                         <Link 
                             to="/profile" 
@@ -97,6 +151,8 @@ const Sidebar = ({ isOpen }) => {
                             Profile
                         </Link>
                     </li>
+
+                    {/* Logout button for all users */}
                     <li>
                         <button 
                             onClick={handleSignOut}

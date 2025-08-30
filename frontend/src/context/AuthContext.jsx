@@ -59,3 +59,6 @@ export const AuthProvider = ({ children }) => {
 
 // Add default export
 export default AuthProvider;
+
+// Add useAuth hook for easier context consumption
+export const useAuth = () => React.useContext(AuthContext);

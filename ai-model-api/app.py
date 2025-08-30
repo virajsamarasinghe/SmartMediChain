@@ -1,8 +1,8 @@
 """
-SmartMediChain AI Model API
+SmartMediChain AI Model API - Fraud Detection
 
-Flask application that provides machine learning predictions for medicine demand
-and inventory optimization for the SmartMediChain system.
+Flask application that provides fraud detection predictions for procurement orders
+using logistic regression model for the SmartMediChain system.
 """
 
 import os
@@ -19,25 +19,20 @@ import numpy as np
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Global variables for backward compatibility
-MODEL = None
-SCALER = None
 
-
-class ModelPredictor:
-    """Class to handle ML model predictions for medicine demand and inventory optimization."""
+class FraudDetectionPredictor:
+    """Class to handle fraud detection predictions for procurement orders."""
 
     def __init__(self):
         self.model = None
         self.scaler = None
-        self.feature_names = []
 
     def load_model(self, model_file_path, scaler_file_path=None):
-        """Load the trained model and scaler"""
+        """Load the trained fraud detection model and scaler"""
         try:
             if os.path.exists(model_file_path):
                 self.model = joblib.load(model_file_path)
-                logger.info("Model loaded successfully from %s", model_file_path)
+                logger.info("Fraud detection model loaded successfully from %s", model_file_path)
             else:
                 logger.warning("Model file not found: %s", model_file_path)
                 return False
@@ -52,7 +47,7 @@ class ModelPredictor:
             return False
 
     def predict(self, features):
-        """Make predictions using the loaded model"""
+        """Make fraud detection predictions using the loaded model"""
         try:
             if self.model is None:
                 raise ValueError("Model not loaded")
@@ -60,11 +55,6 @@ class ModelPredictor:
             # Convert features to numpy array if needed
             if isinstance(features, list):
                 features = np.array(features).reshape(1, -1)
-            elif isinstance(features, dict):
-                # Convert dict to array based on expected feature order
-                features = np.array(
-                    [features[name] for name in self.feature_names]
-                ).reshape(1, -1)
 
             # Apply scaling if scaler is available
             if self.scaler is not None:
@@ -89,8 +79,8 @@ class ModelPredictor:
             raise
 
 
-# Initialize the predictor
-predictor = ModelPredictor()
+# Initialize the fraud detection predictor
+fraud_predictor = FraudDetectionPredictor()
 
 # Initialize Flask app
 app = Flask(__name__)
@@ -103,100 +93,147 @@ def health_check():
     return jsonify(
         {
             "status": "healthy",
-            "message": "AI Model API is running",
+            "message": "Fraud Detection AI API is running",
             "timestamp": datetime.now().isoformat(),
-            "model_loaded": predictor.model is not None,
+            "model_loaded": fraud_predictor.model is not None,
         }
     )
 
 
-@app.route("/model/load", methods=["POST"])
-def load_model():
-    """Load model endpoint"""
+@app.route("/predict/fraud-detection", methods=["POST"])
+def predict_fraud_detection():
+    """Predict fraud detection for procurement orders"""
     try:
-        data = request.get_json()
-        model_file_path = data.get("model_path", "./models/model.pkl")
-        scaler_file_path = data.get("scaler_path", "./models/scaler.pkl")
-
-        success = predictor.load_model(model_file_path, scaler_file_path)
-
-        if success:
-            return jsonify(
-                {
-                    "status": "success",
-                    "message": "Model loaded successfully",
-                    "timestamp": datetime.now().isoformat(),
-                }
+        if fraud_predictor.model is None:
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": "Fraud detection model not loaded",
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                ),
+                400,
             )
+
+        data = request.get_json()
+
+        # Expected features based on your procurement data
+        required_features = [
+            "ordered_quantity",
+            "current_stock", 
+            "min_required",
+            "max_capacity",
+            "unit_cost",
+            "avg_usage_per_day",
+            "restock_lead_time"
+        ]
+
+        # Validate required features
+        missing_features = [f for f in required_features if f not in data]
+        if missing_features:
+            return (
+                jsonify(
+                    {
+                        "status": "error",
+                        "message": f"Missing required features: {missing_features}",
+                        "required_features": required_features,
+                        "timestamp": datetime.now().isoformat(),
+                    }
+                ),
+                400,
+            )
+
+        # Extract base features
+        base_features = [data[feature] for feature in required_features]
+        
+        # Expand to 26 features to match the trained model
+        # Add derived and default features to reach 26 total features
+        expanded_features = base_features + [
+            # Additional derived features (positions 7-25)
+            data["ordered_quantity"] / max(data["current_stock"], 1),  # order to stock ratio
+            data["unit_cost"] * data["ordered_quantity"],  # total order value
+            data["current_stock"] / max(data["min_required"], 1),  # stock coverage ratio
+            data["ordered_quantity"] / max(data["avg_usage_per_day"], 1),  # days of supply
+            max(0, data["ordered_quantity"] - data["max_capacity"]),  # excess quantity
+            1 if data["current_stock"] < data["min_required"] else 0,  # low stock flag
+            1 if data["ordered_quantity"] > data["max_capacity"] else 0,  # overorder flag
+            data["restock_lead_time"] * data["avg_usage_per_day"],  # lead time demand
+            data["unit_cost"] / max(data.get("avg_market_price", data["unit_cost"]), 0.01),  # price ratio
+            len(data.get("medicine_name", "")),  # medicine name length
+            1 if data["unit_cost"] > 100 else 0,  # high cost flag
+            data["ordered_quantity"] % 10,  # quantity modulo (pattern detection)
+            1 if data["ordered_quantity"] > data["avg_usage_per_day"] * 30 else 0,  # month+ supply
+            data["current_stock"] + data["ordered_quantity"],  # total after order
+            abs(data["ordered_quantity"] - data["avg_usage_per_day"] * 7),  # deviation from weekly need
+            1 if data["restock_lead_time"] > 14 else 0,  # long lead time flag
+            data["max_capacity"] - data["current_stock"],  # available capacity
+            data["ordered_quantity"] / max(data["max_capacity"], 1),  # capacity utilization
+            1 if data["ordered_quantity"] == data["min_required"] else 0,  # exact min order flag
+        ]
+        
+        # Pad with zeros if we still don't have 26 features
+        while len(expanded_features) < 26:
+            expanded_features.append(0.0)
+        
+        # Ensure we have exactly 26 features
+        features = expanded_features[:26]
+
+        # Make prediction
+        result = fraud_predictor.predict(features)
+
+        # Interpret the prediction
+        if isinstance(result["prediction"], list):
+            is_fraud = bool(result["prediction"][0])
         else:
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Failed to load model",
-                        "timestamp": datetime.now().isoformat(),
-                    }
-                ),
-                400,
-            )
+            is_fraud = bool(result["prediction"])
 
-    except (KeyError, TypeError, ValueError) as e:
-        logger.error("Error in load_model: %s", str(e))
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": str(e),
-                    "timestamp": datetime.now().isoformat(),
-                }
-            ),
-            500,
-        )
+        confidence = result.get("confidence", 0.5)
+        
+        # Determine risk level based on confidence
+        if confidence >= 0.9:
+            risk_level = "HIGH" if is_fraud else "LOW"
+        elif confidence >= 0.7:
+            risk_level = "MEDIUM"
+        else:
+            risk_level = "LOW"
 
-
-@app.route("/predict", methods=["POST"])
-def predict():
-    """Make prediction endpoint"""
-    try:
-        if predictor.model is None:
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Model not loaded. Please load a model first.",
-                        "timestamp": datetime.now().isoformat(),
-                    }
-                ),
-                400,
-            )
-
-        data = request.get_json()
-
-        if not data or "features" not in data:
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Missing features in request body",
-                        "timestamp": datetime.now().isoformat(),
-                    }
-                ),
-                400,
-            )
-
-        features = data["features"]
-        result = predictor.predict(features)
+        # Generate fraud reasons based on the input data
+        fraud_reasons = []
+        if is_fraud:
+            # Check for over stock order
+            if data["ordered_quantity"] > data["max_capacity"]:
+                fraud_reasons.append("Order quantity exceeds maximum storage capacity")
+            
+            # Check if order is much higher than typical usage
+            estimated_need = data["avg_usage_per_day"] * data["restock_lead_time"] * 2  # 2x safety factor
+            if data["ordered_quantity"] > estimated_need:
+                fraud_reasons.append("Order quantity significantly exceeds estimated need")
+            
+            # Check for unusual pricing
+            if data["unit_cost"] <= 0:
+                fraud_reasons.append("Invalid or suspicious unit cost")
+            
+            # Check if current stock is already sufficient
+            if data["current_stock"] > data["min_required"] * 2 and data["ordered_quantity"] > data["avg_usage_per_day"] * 7:
+                fraud_reasons.append("Unnecessary order - current stock is sufficient")
 
         return jsonify(
             {
                 "status": "success",
-                "result": result,
+                "result": {
+                    "is_fraud": is_fraud,
+                    "risk_level": risk_level,
+                    "confidence_score": int(confidence * 100),
+                    "reasons": fraud_reasons,
+                    "probability": result.get("probability", [[1-confidence, confidence]]),
+                },
                 "timestamp": datetime.now().isoformat(),
             }
         )
 
     except (KeyError, ValueError, AttributeError) as e:
-        logger.error("Error in predict: %s", str(e))
+        logger.error("Error in predict_fraud_detection: %s", str(e))
         return (
             jsonify(
                 {
@@ -208,172 +245,6 @@ def predict():
             ),
             500,
         )
-
-
-@app.route("/predict/medicine-demand", methods=["POST"])
-def predict_medicine_demand():
-    """Predict medicine demand based on historical data"""
-    try:
-        if predictor.model is None:
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Model not loaded. Please load a model first.",
-                        "timestamp": datetime.now().isoformat(),
-                    }
-                ),
-                400,
-            )
-
-        data = request.get_json()
-
-        # Expected features for medicine demand prediction
-        required_features = [
-            "historical_sales",
-            "current_stock",
-            "season_factor",
-            "trend_factor",
-            "price",
-            "days_since_last_order",
-        ]
-
-        features = []
-        for feature in required_features:
-            if feature not in data:
-                return (
-                    jsonify(
-                        {
-                            "status": "error",
-                            "message": f"Missing required feature: {feature}",
-                            "required_features": required_features,
-                            "timestamp": datetime.now().isoformat(),
-                        }
-                    ),
-                    400,
-                )
-            features.append(data[feature])
-
-        result = predictor.predict(features)
-
-        # Interpret the prediction for medicine demand
-        if isinstance(result["prediction"], list):
-            predicted_demand = result["prediction"][0]
-        else:
-            predicted_demand = result["prediction"]
-
-        return jsonify(
-            {
-                "status": "success",
-                "predicted_demand": float(predicted_demand),
-                "confidence": result.get("confidence", 1.0),
-                "recommendation": get_demand_recommendation(predicted_demand),
-                "timestamp": datetime.now().isoformat(),
-            }
-        )
-
-    except (KeyError, ValueError, AttributeError) as e:
-        logger.error("Error in predict_medicine_demand: %s", str(e))
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": str(e),
-                    "timestamp": datetime.now().isoformat(),
-                }
-            ),
-            500,
-        )
-
-
-@app.route("/predict/inventory-optimization", methods=["POST"])
-def predict_inventory_optimization():
-    """Predict optimal inventory levels"""
-    try:
-        if predictor.model is None:
-            return (
-                jsonify(
-                    {
-                        "status": "error",
-                        "message": "Model not loaded. Please load a model first.",
-                        "timestamp": datetime.now().isoformat(),
-                    }
-                ),
-                400,
-            )
-
-        data = request.get_json()
-        medicines = data.get("medicines", [])
-
-        predictions = []
-
-        for medicine in medicines:
-            try:
-                features = [
-                    medicine.get("current_stock", 0),
-                    medicine.get("avg_daily_sales", 0),
-                    medicine.get("lead_time_days", 7),
-                    medicine.get("safety_stock_factor", 1.5),
-                    medicine.get("cost_per_unit", 0),
-                ]
-
-                result = predictor.predict(features)
-                if isinstance(result["prediction"], list):
-                    optimal_stock = result["prediction"][0]
-                else:
-                    optimal_stock = result["prediction"]
-
-                predictions.append(
-                    {
-                        "medicine_id": medicine.get("id"),
-                        "medicine_name": medicine.get("name"),
-                        "current_stock": medicine.get("current_stock", 0),
-                        "predicted_optimal_stock": float(optimal_stock),
-                        "reorder_needed": medicine.get("current_stock", 0)
-                        < optimal_stock,
-                        "confidence": result.get("confidence", 1.0),
-                    }
-                )
-
-            except (ValueError, KeyError, AttributeError) as e:
-                medicine_name = medicine.get("name", "unknown")
-                logger.error(
-                    "Error predicting for medicine %s: %s", medicine_name, str(e)
-                )
-                continue
-
-        return jsonify(
-            {
-                "status": "success",
-                "predictions": predictions,
-                "timestamp": datetime.now().isoformat(),
-            }
-        )
-
-    except (KeyError, ValueError, AttributeError) as e:
-        logger.error("Error in predict_inventory_optimization: %s", str(e))
-        return (
-            jsonify(
-                {
-                    "status": "error",
-                    "message": str(e),
-                    "timestamp": datetime.now().isoformat(),
-                }
-            ),
-            500,
-        )
-
-
-def get_demand_recommendation(predicted_demand):
-    """Get recommendation based on predicted demand"""
-    if predicted_demand > 100:
-        return "High demand expected. Consider increasing stock levels."
-    elif predicted_demand > 50:
-        return "Moderate demand expected. Maintain current stock levels."
-    elif predicted_demand > 20:
-        return "Low demand expected. Consider reducing orders."
-    else:
-        return "Very low demand expected. Minimize stock levels."
 
 
 @app.errorhandler(404)
@@ -407,15 +278,15 @@ def internal_error(_error):
 
 
 if __name__ == "__main__":
-    # Try to load model on startup if it exists
-    default_model_path = os.getenv("MODEL_PATH", "./models/model.pkl")
-    default_scaler_path = os.getenv("SCALER_PATH", "./models/scaler.pkl")
+    # Try to load fraud detection model on startup
+    fraud_model_path = os.getenv("FRAUD_MODEL_PATH", "./models/fraud_detection_model.pkl")
+    fraud_scaler_path = os.getenv("FRAUD_SCALER_PATH", "./models/fraud_scaler.pkl")
 
-    if os.path.exists(default_model_path):
-        predictor.load_model(default_model_path, default_scaler_path)
+    if os.path.exists(fraud_model_path):
+        fraud_predictor.load_model(fraud_model_path, fraud_scaler_path)
     else:
         logger.warning(
-            "No model found on startup. Use /model/load endpoint to load a model."
+            "Fraud detection model not found at startup: %s", fraud_model_path
         )
 
     # Start the Flask app

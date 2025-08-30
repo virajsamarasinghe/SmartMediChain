@@ -5,7 +5,9 @@ const registerSchema = Joi.object({
   name: Joi.string().min(2).max(100).required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
-  role: Joi.string().valid('admin', 'supplier', 'distributor', 'retailer', 'hospital', 'patient').default('patient'),
+  role: Joi.string().valid('admin', 'supplier', 'distributor', 'retailer', 'hospital', 'patient', 
+                   'operations_manager', 'compliance_manager', 'finance_manager', 'senior_manager',
+                   'pharmacy_stock_manager', 'pharmacy_order_manager').default('patient'),
   organization: Joi.object({
     name: Joi.string().max(200),
     type: Joi.string().valid('hospital', 'pharmacy', 'clinic', 'supplier', 'distributor', 'manufacturer'),
@@ -62,10 +64,14 @@ const adminCreateUserSchema = Joi.object({
   name: Joi.string().min(2).max(100).required(),
   email: Joi.string().email().required(),
   password: Joi.string().min(6).required(),
-  role: Joi.string().valid('admin', 'supplier', 'distributor', 'retailer', 'hospital', 'patient').required(),
+  role: Joi.string().valid('admin', 'supplier', 'distributor', 'retailer', 'hospital', 'patient',
+                   'operations_manager', 'compliance_manager', 'finance_manager', 'senior_manager',
+                   'pharmacy_stock_manager', 'pharmacy_order_manager').required(),
   organization: Joi.object({
     name: Joi.string().max(200),
-    type: Joi.string().valid('hospital', 'pharmacy', 'clinic', 'supplier', 'distributor', 'manufacturer'),
+    type: Joi.string().valid('admin', 'supplier', 'distributor', 'retailer', 'hospital', 'patient',
+                   'operations_manager', 'compliance_manager', 'finance_manager', 'senior_manager',
+                   'pharmacy_stock_manager', 'pharmacy_order_manager'),
     license: Joi.string(),
     address: Joi.object({
       street: Joi.string(),
@@ -87,7 +93,9 @@ const adminCreateUserSchema = Joi.object({
 const adminUpdateUserSchema = Joi.object({
   name: Joi.string().min(2).max(100),
   email: Joi.string().email(),
-  role: Joi.string().valid('admin', 'supplier', 'distributor', 'retailer', 'hospital', 'patient'),
+  role: Joi.string().valid('admin', 'supplier', 'distributor', 'retailer', 'hospital', 'patient',
+                   'operations_manager', 'compliance_manager', 'finance_manager', 'senior_manager',
+                   'pharmacy_stock_manager', 'pharmacy_order_manager'),
   organization: Joi.object({
     name: Joi.string().max(200),
     type: Joi.string().valid('hospital', 'pharmacy', 'clinic', 'supplier', 'distributor', 'manufacturer'),

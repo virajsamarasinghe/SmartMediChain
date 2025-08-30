@@ -92,7 +92,7 @@ const createUser = async (req, res) => {
       });
     }
 
-    const { email } = req.body;
+    const { email, role } = req.body;
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -103,7 +103,45 @@ const createUser = async (req, res) => {
       });
     }
 
-    // Create user
+    // Check if the user being created has a special role that requires approval
+    const requiresApproval = ['operations_manager', 'compliance_manager', 'finance_manager', 'senior_manager'].includes(role);
+    
+    // If admin is creating a special role and they are not a senior manager, create approval request
+    if (requiresApproval && req.user.role !== 'senior_manager') {
+      const { createApprovalRequest } = require('../services/approvalService');
+      
+      // Create the user in inactive state
+      const userToCreate = {
+        ...req.body,
+        isActive: false // User will be inactive until approved
+      };
+      
+      const user = await User.create(userToCreate);
+      
+      // Create approval request
+      const approval = await createApprovalRequest(
+        req.user,
+        'User',
+        user._id,
+        'create',
+        req.body
+      );
+      
+      return res.status(202).json({
+        success: true,
+        message: 'User creation request submitted for approval',
+        data: { 
+          user: user.getPublicProfile(),
+          approval: {
+            id: approval._id,
+            status: approval.status,
+            requiredApprovals: approval.requiredApprovals.map(item => item.role)
+          }
+        }
+      });
+    }
+    
+    // For regular users or if admin has sufficient permissions, create directly
     const user = await User.create(req.body);
 
     res.status(201).json({
@@ -149,7 +187,50 @@ const updateUser = async (req, res) => {
       }
     }
     
-    // Update user
+    // Find the user first to check current role
+    const user = await User.findById(req.params.id).select('-password -refreshTokens');
+    
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: 'User not found'
+      });
+    }
+    
+    // Check if the update includes role changes that require approval
+    const { role } = req.body;
+    const specialRoles = ['operations_manager', 'compliance_manager', 'finance_manager', 'senior_manager', 'admin'];
+    const roleChanged = role && role !== user.role;
+    const isSpecialRoleChange = roleChanged && (specialRoles.includes(role) || specialRoles.includes(user.role));
+    
+    // If trying to change to/from a special role and requester is not a senior manager
+    if (isSpecialRoleChange && req.user.role !== 'senior_manager') {
+      const { createApprovalRequest } = require('../services/approvalService');
+      
+      // Create approval request
+      const approval = await createApprovalRequest(
+        req.user,
+        'User',
+        user._id,
+        'update',
+        req.body
+      );
+      
+      return res.status(202).json({
+        success: true,
+        message: 'User update request submitted for approval',
+        data: { 
+          user: user,
+          approval: {
+            id: approval._id,
+            status: approval.status,
+            requiredApprovals: approval.requiredApprovals.map(item => item.role)
+          }
+        }
+      });
+    }
+    
+    // Update user directly if no approval needed
     const updatedUser = await User.findByIdAndUpdate(
       req.params.id,
       req.body,

@@ -1,6 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import { MedicineContext } from '../context/MedicineContext';
 import { AuthContext } from '../context/AuthContext';
+import { blockchainService } from '../services/blockchainService';
+import axios from 'axios';
+import { API_URL } from '../config';
+import { toast } from 'react-toastify';
 import Button from '../components/common/Button';
 import Input from '../components/common/Input';
 import Card from '../components/common/Card';
@@ -18,6 +22,9 @@ const PlaceOrder = () => {
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [selectedOrderToDelete, setSelectedOrderToDelete] = useState(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [blockchainEnabled, setBlockchainEnabled] = useState(false);
 
     // Load orders from localStorage on component mount
     useEffect(() => {
@@ -30,6 +37,11 @@ const PlaceOrder = () => {
             if (savedOrders) {
                 setOrders(JSON.parse(savedOrders));
             }
+            
+            // Check blockchain availability
+            const isBlockchainAvailable = await blockchainService.isBlockchainAvailable();
+            setBlockchainEnabled(isBlockchainAvailable);
+            
             setPageLoading(false);
         };
         
@@ -125,6 +137,35 @@ const PlaceOrder = () => {
             // Run AI fraud detection
             const aiResult = aiDetectFraud(medicine, quantityNum, priceNum);
 
+            let blockchainData = null;
+            
+            // Try to place order on blockchain if available
+            if (blockchainEnabled) {
+                try {
+                    const blockchainResult = await blockchainService.placeOrderWithFraudDetection({
+                        medicineId: selectedMedicine,
+                        medicineName: medicine.name,
+                        quantity: quantityNum,
+                        pricePerUnit: priceNum,
+                        userId: user?.id || 'unknown'
+                    });
+                    
+                    if (blockchainResult.success) {
+                        blockchainData = {
+                            blockchainOrderId: blockchainResult.data.blockchain?.blockchainOrderId,
+                            transactionHashes: blockchainResult.data.blockchain?.transactionHashes,
+                            blockchainLogged: true
+                        };
+                    }
+                } catch (error) {
+                    console.error('Blockchain logging failed:', error);
+                    blockchainData = {
+                        blockchainLogged: false,
+                        error: error.message
+                    };
+                }
+            }
+
             const newOrder = {
                 id: Date.now().toString(),
                 medicineId: selectedMedicine,
@@ -134,6 +175,7 @@ const PlaceOrder = () => {
                 totalPrice: quantityNum * priceNum,
                 status: aiResult.isFraud ? 'FLAGGED_FOR_REVIEW' : 'PENDING_APPROVAL',
                 aiDetection: aiResult,
+                blockchain: blockchainData,
                 managementApprovals: managementMembers.map(member => ({
                     ...member,
                     approved: null,
@@ -225,6 +267,50 @@ const PlaceOrder = () => {
             default: return 'text-gray-600 bg-gray-100';
         }
     };
+    
+    const handleDeleteOrder = async () => {
+        if (!selectedOrderToDelete) return;
+        
+        setSubmitting(true);
+        
+        try {
+            // For localStorage-based orders
+            if (selectedOrderToDelete.id) {
+                const updatedOrders = orders.filter(order => order.id !== selectedOrderToDelete.id);
+                setOrders(updatedOrders);
+                localStorage.setItem('orders', JSON.stringify(updatedOrders));
+                toast.success('Order deleted successfully');
+                setShowDeleteModal(false);
+                setSelectedOrderToDelete(null);
+            } 
+            // For API-based orders
+            else if (selectedOrderToDelete._id) {
+                const response = await axios.delete(`${API_URL}/api/orders/${selectedOrderToDelete._id}`, {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`
+                    }
+                });
+                
+                if (response.data.success) {
+                    const updatedOrders = orders.filter(order => order._id !== selectedOrderToDelete._id);
+                    setOrders(updatedOrders);
+                    localStorage.setItem('orders', JSON.stringify(updatedOrders));
+                    toast.success('Order deleted successfully');
+                }
+                
+                setShowDeleteModal(false);
+                setSelectedOrderToDelete(null);
+            }
+        } catch (error) {
+            console.error('Error deleting order:', error);
+            toast.error(
+                error.response?.data?.message || 
+                'Failed to delete order. Only administrators can delete orders.'
+            );
+        } finally {
+            setSubmitting(false);
+        }
+    };
 
     return (
         <div className="container mx-auto px-4 py-8 relative">
@@ -245,7 +331,22 @@ const PlaceOrder = () => {
             )}
             
             <div className={`transition-all duration-500 ${pageLoading ? 'opacity-0' : 'opacity-100'}`}>
-                <h1 className="text-3xl font-bold text-gray-800 mb-8 animate-fadeIn">Place Order with AI Fraud Detection</h1>
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-800 mb-2 animate-fadeIn">Place Order with AI Fraud Detection</h1>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${blockchainEnabled ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                            <span className={`text-sm font-medium ${blockchainEnabled ? 'text-green-600' : 'text-red-600'}`}>
+                                Blockchain {blockchainEnabled ? 'Connected' : 'Disconnected'}
+                            </span>
+                        </div>
+                        {blockchainEnabled && (
+                            <span className="text-sm text-gray-600">
+                                Orders will be logged to blockchain for authenticity verification
+                            </span>
+                        )}
+                    </div>
+                </div>
             
             {/* Order Form */}
             <Card className="mb-8 hover-lift transition-smooth animate-scaleIn">
@@ -309,6 +410,34 @@ const PlaceOrder = () => {
                 </div>
             </Card>
 
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                        <h3 className="text-xl font-bold mb-4">Delete Order</h3>
+                        <p className="mb-6">
+                            Are you sure you want to delete this order? This action cannot be undone.
+                        </p>
+                        <div className="flex justify-end gap-4">
+                            <button
+                                onClick={() => setShowDeleteModal(false)}
+                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                                disabled={submitting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteOrder}
+                                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                                disabled={submitting}
+                            >
+                                {submitting ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             {/* Orders List */}
             <div className="space-y-6">
                 <h2 className="text-2xl font-semibold text-gray-800">Order Status & Management Approval</h2>
@@ -371,6 +500,44 @@ const PlaceOrder = () => {
                                         )}
                                     </div>
 
+                                    {/* Blockchain Information */}
+                                    {order.blockchain && (
+                                        <div className="mb-4">
+                                            <h4 className="font-medium mb-2">Blockchain Status:</h4>
+                                            <div className="flex items-center gap-4">
+                                                {order.blockchain.blockchainLogged ? (
+                                                    <>
+                                                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                                                            ✅ Logged to Blockchain
+                                                        </span>
+                                                        {order.blockchain.blockchainOrderId && (
+                                                            <span className="text-sm text-gray-600">
+                                                                ID: {order.blockchain.blockchainOrderId}
+                                                            </span>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                                                        ⚠️ Not Logged to Blockchain
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {order.blockchain.transactionHashes && (
+                                                <div className="mt-2 text-sm text-gray-600">
+                                                    <p>Transaction Hashes:</p>
+                                                    <ul className="ml-4">
+                                                        {order.blockchain.transactionHashes.orderTx && (
+                                                            <li>Order: {blockchainService.formatTransactionHash(order.blockchain.transactionHashes.orderTx)}</li>
+                                                        )}
+                                                        {order.blockchain.transactionHashes.fraudDetectionTx && (
+                                                            <li>Fraud Detection: {blockchainService.formatTransactionHash(order.blockchain.transactionHashes.fraudDetectionTx)}</li>
+                                                        )}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Management Approvals */}
                                     <div>
                                         <h4 className="font-medium mb-3">Management Approvals:</h4>
@@ -428,10 +595,31 @@ const PlaceOrder = () => {
                             </div>
                             
                             <div className="mt-4 pt-4 border-t border-gray-200 text-sm text-gray-500">
-                                <div className="flex justify-between">
+                                <div className="flex justify-between items-center">
                                     <span>Order ID: {order.id}</span>
                                     <span>Created: {new Date(order.createdAt).toLocaleString()}</span>
-                                    <span>By: {order.createdBy}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span>By: {order.createdBy}</span>
+                                        {order.blockchain?.blockchainOrderId && (
+                                            <a 
+                                                href={`/blockchain-validation?orderId=${order.blockchain.blockchainOrderId}`}
+                                                className="ml-2 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                                            >
+                                                Verify on Blockchain
+                                            </a>
+                                        )}
+                                        {user && user.role === 'admin' && (
+                                            <button 
+                                                onClick={() => {
+                                                    setSelectedOrderToDelete(order);
+                                                    setShowDeleteModal(true);
+                                                }}
+                                                className="ml-4 px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                                            >
+                                                Delete Order
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </Card>

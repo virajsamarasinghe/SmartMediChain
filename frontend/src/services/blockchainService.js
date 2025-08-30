@@ -5,7 +5,7 @@
 
 import { authService } from './authService';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
 
 class BlockchainService {
     /**
@@ -16,7 +16,7 @@ class BlockchainService {
     async placeOrderWithFraudDetection(orderData) {
         try {
             const token = authService.getToken();
-            
+
             const response = await fetch(`${API_BASE_URL}/api/blockchain/place-order`, {
                 method: 'POST',
                 headers: {
@@ -47,7 +47,7 @@ class BlockchainService {
     async submitManagerApproval(approvalData) {
         try {
             const token = authService.getToken();
-            
+
             const response = await fetch(`${API_BASE_URL}/api/blockchain/manager-approval`, {
                 method: 'POST',
                 headers: {
@@ -78,7 +78,7 @@ class BlockchainService {
     async getOrderFromBlockchain(blockchainOrderId) {
         try {
             const token = authService.getToken();
-            
+
             const response = await fetch(`${API_BASE_URL}/api/blockchain/order/${blockchainOrderId}`, {
                 method: 'GET',
                 headers: {
@@ -106,7 +106,7 @@ class BlockchainService {
     async getBlockchainStatus() {
         try {
             const token = authService.getToken();
-            
+
             const response = await fetch(`${API_BASE_URL}/api/blockchain/status`, {
                 method: 'GET',
                 headers: {
@@ -134,27 +134,27 @@ class BlockchainService {
      */
     simulateFraudDetection(orderData) {
         const { quantity, pricePerUnit } = orderData;
-        
+
         const fraudReasons = [];
         let riskLevel = 'LOW';
         let isFraud = false;
-        
+
         // Mock fraud detection logic
         const normalPrice = 10; // Mock normal price per unit
         const pricePerUnitNum = parseFloat(pricePerUnit);
-        
+
         if (pricePerUnitNum > normalPrice * 1.5) {
             fraudReasons.push('Overpricing detected - Price is significantly higher than market rate');
             riskLevel = 'HIGH';
             isFraud = true;
         }
-        
+
         if (quantity > 1000) {
             fraudReasons.push('Unusual large quantity order detected');
             riskLevel = riskLevel === 'HIGH' ? 'HIGH' : 'MEDIUM';
             isFraud = true;
         }
-        
+
         if (pricePerUnitNum < normalPrice * 0.3) {
             fraudReasons.push('Suspiciously low pricing detected');
             riskLevel = riskLevel === 'HIGH' ? 'HIGH' : 'MEDIUM';

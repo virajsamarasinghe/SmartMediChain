@@ -4,6 +4,7 @@
  */
 
 const SmartContractService = require('../services/smartContractService');
+const AIModelService = require('../services/aiModelService');
 
 class BlockchainController {
     constructor() {
@@ -66,7 +67,7 @@ class BlockchainController {
 
                     if (orderResult.success) {
                         blockchainOrderId = orderResult.orderId;
-                        
+
                         // Submit fraud detection result to blockchain
                         const fraudResult = await this.smartContractService.submitFraudDetection(
                             blockchainOrderId,
@@ -235,7 +236,7 @@ class BlockchainController {
             }
 
             const orderResult = await this.smartContractService.getOrder(blockchainOrderId);
-            
+
             if (!orderResult.success) {
                 return res.status(404).json({
                     success: false,
@@ -302,36 +303,73 @@ class BlockchainController {
     };
 
     /**
-     * Call AI model for fraud detection
+     * Call AI model for fraud detection using the logistic regression model
      * @param {Object} orderData - Order data for fraud detection
      * @returns {Object} Fraud detection result
      */
     async callAIFraudDetection(orderData) {
         try {
-            // This should call your existing AI model API
-            // For now, I'll implement a mock fraud detection
-            const { quantity, pricePerUnit } = orderData;
-            
+            // Use the real AI model service for fraud detection
+            const aiResult = await AIModelService.analyzeOrderForFraud(orderData);
+
+            if (aiResult.success) {
+                return {
+                    isFraud: aiResult.data.is_fraud,
+                    riskLevel: aiResult.data.risk_level,
+                    reasons: aiResult.data.reasons,
+                    confidenceScore: aiResult.data.confidence_score,
+                    timestamp: new Date().toISOString()
+                };
+            } else {
+                // Fallback to basic rule-based detection if AI model fails
+                console.warn('AI fraud detection failed, using fallback logic:', aiResult.error);
+                return this.fallbackFraudDetection(orderData);
+            }
+
+        } catch (error) {
+            console.error('AI fraud detection failed:', error);
+            // Return fallback detection
+            return this.fallbackFraudDetection(orderData);
+        }
+    }
+
+    /**
+     * Fallback fraud detection using basic rules
+     * @param {Object} orderData - Order data for fraud detection
+     * @returns {Object} Fraud detection result
+     */
+    fallbackFraudDetection(orderData) {
+        try {
+            const { quantity, pricePerUnit, maxCapacity = 1000, avgUsagePerDay = 10 } = orderData;
+
             const fraudReasons = [];
             let riskLevel = 'LOW';
             let isFraud = false;
-            
-            // Mock fraud detection logic (replace with actual AI API call)
+
+            // Basic rule-based fraud detection
             const normalPrice = 10; // Mock normal price per unit
             const pricePerUnitNum = parseFloat(pricePerUnit);
-            
+
             if (pricePerUnitNum > normalPrice * 1.5) {
                 fraudReasons.push('Overpricing detected - Price is significantly higher than market rate');
                 riskLevel = 'HIGH';
                 isFraud = true;
             }
-            
-            if (quantity > 1000) {
-                fraudReasons.push('Unusual large quantity order detected');
+
+            if (quantity > maxCapacity) {
+                fraudReasons.push('Order quantity exceeds maximum storage capacity');
+                riskLevel = 'HIGH';
+                isFraud = true;
+            }
+
+            // Check if order is much higher than typical usage (30 days worth)
+            const estimatedNeed = avgUsagePerDay * 30;
+            if (quantity > estimatedNeed * 2) {
+                fraudReasons.push('Order quantity significantly exceeds estimated monthly need');
                 riskLevel = riskLevel === 'HIGH' ? 'HIGH' : 'MEDIUM';
                 isFraud = true;
             }
-            
+
             if (pricePerUnitNum < normalPrice * 0.3) {
                 fraudReasons.push('Suspiciously low pricing detected');
                 riskLevel = riskLevel === 'HIGH' ? 'HIGH' : 'MEDIUM';
@@ -342,17 +380,18 @@ class BlockchainController {
                 isFraud,
                 riskLevel,
                 reasons: fraudReasons,
-                confidenceScore: isFraud ? 85 : 95,
-                timestamp: new Date().toISOString()
+                confidenceScore: isFraud ? 75 : 85,
+                timestamp: new Date().toISOString(),
+                fallback: true
             };
 
         } catch (error) {
-            console.error('AI fraud detection failed:', error);
+            console.error('Fallback fraud detection failed:', error);
             // Return safe default
             return {
                 isFraud: false,
                 riskLevel: 'LOW',
-                reasons: [],
+                reasons: ['Fraud detection system unavailable'],
                 confidenceScore: 50,
                 timestamp: new Date().toISOString(),
                 error: error.message

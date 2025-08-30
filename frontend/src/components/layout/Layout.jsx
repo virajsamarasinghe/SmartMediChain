@@ -4,6 +4,7 @@ import Header from './Header';
 import Sidebar from './Sidebar';
 import PageTransition from '../common/PageTransition';
 import Loading from '../common/Loading';
+import ApprovalNotification from '../common/ApprovalNotification';
 
 const Layout = ({ children }) => {
     const location = useLocation();
@@ -86,6 +87,9 @@ const Layout = ({ children }) => {
                     </div>
                 </main>
             </div>
+            
+            {/* Approval Notification Component */}
+            {!isLoginPage && <ApprovalNotification />}
         </div>
     );
 };
