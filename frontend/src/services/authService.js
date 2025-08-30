@@ -1,7 +1,7 @@
 import axios from 'axios';
-import { API_URL, TOKEN_KEY, REFRESH_TOKEN_KEY } from '../config';
+import { TOKEN_KEY, REFRESH_TOKEN_KEY } from '../config';
 
-const API_BASE_URL = API_URL;
+const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
 
 // Create axios instance with default config
 const apiClient = axios.create({

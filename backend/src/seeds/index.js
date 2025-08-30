@@ -119,6 +119,94 @@ const seedUsers = async () => {
             country: 'USA'
           }
         }
+      },
+      {
+        name: 'John Operations Manager',
+        email: 'operations@smartmedichain.com',
+        password: 'operations123',
+        role: 'operations_manager',
+        isVerified: true,
+        organization: {
+          name: 'SmartMediChain Operations',
+          type: 'hospital',
+          address: {
+            street: '123 Operations St',
+            city: 'Management City',
+            state: 'CA',
+            zipCode: '90211',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0001',
+          specialization: 'Operations Management'
+        }
+      },
+      {
+        name: 'Sarah Compliance Manager',
+        email: 'compliance@smartmedichain.com',
+        password: 'compliance123',
+        role: 'compliance_manager',
+        isVerified: true,
+        organization: {
+          name: 'SmartMediChain Compliance',
+          type: 'hospital',
+          address: {
+            street: '456 Compliance Ave',
+            city: 'Regulatory City',
+            state: 'NY',
+            zipCode: '10002',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0002',
+          specialization: 'Regulatory Compliance'
+        }
+      },
+      {
+        name: 'Mike Finance Manager',
+        email: 'finance@smartmedichain.com',
+        password: 'finance123',
+        role: 'finance_manager',
+        isVerified: true,
+        organization: {
+          name: 'SmartMediChain Finance',
+          type: 'hospital',
+          address: {
+            street: '789 Finance Blvd',
+            city: 'Financial City',
+            state: 'TX',
+            zipCode: '75002',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0003',
+          specialization: 'Financial Management'
+        }
+      },
+      {
+        name: 'Lisa Senior Manager',
+        email: 'senior@smartmedichain.com',
+        password: 'senior123',
+        role: 'senior_manager',
+        isVerified: true,
+        organization: {
+          name: 'SmartMediChain Senior Management',
+          type: 'hospital',
+          address: {
+            street: '321 Executive Way',
+            city: 'Executive City',
+            state: 'FL',
+            zipCode: '33102',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0004',
+          specialization: 'Senior Management'
+        }
       }
     ];
 
@@ -127,7 +215,7 @@ const seedUsers = async () => {
       await User.create(userData);
     }
     console.log('✅ Users seeded successfully');
-    
+
     return await User.find({});
   } catch (error) {
     console.error('❌ Error seeding users:', error);
@@ -356,7 +444,7 @@ const seedMedicines = async (users) => {
 
     await Medicine.insertMany(medicines);
     console.log('✅ Medicines seeded successfully');
-    
+
     return await Medicine.find({});
   } catch (error) {
     console.error('❌ Error seeding medicines:', error);
@@ -490,20 +578,24 @@ const seedOrders = async (users, medicines) => {
 const seedDatabase = async () => {
   try {
     await connectDB();
-    
+
     console.log('🌱 Starting database seeding...');
-    
+
     const users = await seedUsers();
     const medicines = await seedMedicines(users);
     await seedOrders(users, medicines);
-    
+
     console.log('✅ Database seeding completed successfully!');
     console.log('📧 Login credentials:');
     console.log('   Admin: admin@smartmedichain.com / admin123');
     console.log('   Supplier: supplier@medisupply.com / supplier123');
     console.log('   Hospital: hospital@citygeneral.com / hospital123');
     console.log('   Pharmacy: pharmacy@centralpharm.com / pharmacy123');
-    
+    console.log('   Operations Manager: operations@smartmedichain.com / operations123');
+    console.log('   Compliance Manager: compliance@smartmedichain.com / compliance123');
+    console.log('   Finance Manager: finance@smartmedichain.com / finance123');
+    console.log('   Senior Manager: senior@smartmedichain.com / senior123');
+
     process.exit(0);
   } catch (error) {
     console.error('❌ Database seeding failed:', error);
