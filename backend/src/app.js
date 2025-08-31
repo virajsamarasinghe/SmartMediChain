@@ -106,12 +106,17 @@ app.use(cors({
     'http://localhost:3000',
     'http://frontend:3000',
     'http://20.36.128.93:3000',
+    'http://20.36.128.93:3001',
+    'https://20.36.128.93:3000',
+    'https://20.36.128.93:3001',
     process.env.CORS_ORIGIN
   ].filter(Boolean),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  exposedHeaders: ['Content-Length', 'X-Total-Count']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+  exposedHeaders: ['Content-Length', 'X-Total-Count'],
+  preflightContinue: false,
+  optionsSuccessStatus: 204
 }));
 
 // Rate limiting
@@ -134,6 +139,9 @@ if (process.env.NODE_ENV === 'development') {
 } else {
   app.use(morgan('combined'));
 }
+
+// Handle preflight requests
+app.options('*', cors());
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -223,10 +231,11 @@ app.use(errorHandler);
 const PORT = process.env.PORT || 5000;
 
 // Start server
-const server = app.listen(PORT, () => {
+const server = app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 SmartMediChain API server running on port ${PORT}`);
   console.log(`📊 Environment: ${process.env.NODE_ENV}`);
   console.log(`🔗 Database: ${process.env.MONGODB_URI}`);
+  console.log(`🌐 Server accessible on all network interfaces`);
 });
 
 // Handle unhandled promise rejections

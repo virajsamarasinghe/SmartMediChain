@@ -61,7 +61,7 @@ services:
       - AI_MODEL_HOST=0.0.0.0
       - FRAUD_MODEL_PATH=./models/fraud_detection_model.pkl
       - FRAUD_SCALER_PATH=./models/fraud_scaler.pkl
-      - CORS_ORIGINS=http://localhost:3000,http://localhost:5000,http://frontend:3000
+      - CORS_ORIGINS=http://localhost:3000,http://localhost:5000,http://frontend:3000,http://20.36.128.93:3000
       - LOG_LEVEL=INFO
       - LOG_FILE=./logs/ai_model_api.log
       - MIN_CONFIDENCE_THRESHOLD=0.7
@@ -83,10 +83,10 @@ services:
       - "3000:3000"
     environment:
       - PORT=3000
-      # For browser access
-      - REACT_APP_API_URL=http://localhost:3001/api
-      - REACT_APP_BACKEND_URL=http://localhost:3001
-      - REACT_APP_AI_MODEL_API_URL=http://localhost:5001
+      # For browser access from external IP
+      - REACT_APP_API_URL=http://20.36.128.93:3001/api
+      - REACT_APP_BACKEND_URL=http://20.36.128.93:3001
+      - REACT_APP_AI_MODEL_API_URL=http://20.36.128.93:5001
     depends_on:
       - backend
       - ai-model-api
