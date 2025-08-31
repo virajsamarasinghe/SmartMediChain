@@ -44,7 +44,7 @@ const seedUsers = async () => {
         name: 'MediSupply Corp',
         email: 'supplier@medisupply.com',
         password: 'supplier123',
-        role: 'supplier',
+        role: 'admin',
         isVerified: true,
         organization: {
           name: 'MediSupply Corporation',
@@ -67,7 +67,7 @@ const seedUsers = async () => {
         name: 'PharmaTech Manufacturing',
         email: 'manufacturer@pharmatech.com',
         password: 'manufacturer123',
-        role: 'supplier',
+        role: 'admin',
         isVerified: true,
         organization: {
           name: 'PharmaTech Manufacturing Ltd',
@@ -86,7 +86,7 @@ const seedUsers = async () => {
         name: 'City General Hospital',
         email: 'hospital@citygeneral.com',
         password: 'hospital123',
-        role: 'hospital',
+        role: 'operations_manager',
         isVerified: true,
         organization: {
           name: 'City General Hospital',
@@ -105,7 +105,7 @@ const seedUsers = async () => {
         name: 'Central Pharmacy',
         email: 'pharmacy@centralpharm.com',
         password: 'pharmacy123',
-        role: 'retailer',
+        role: 'pharmacy_stock_manager',
         isVerified: true,
         organization: {
           name: 'Central Pharmacy Chain',
@@ -228,8 +228,8 @@ const seedMedicines = async (users) => {
     await Medicine.deleteMany({});
     console.log('🗑️  Existing medicines cleared');
 
-    const supplier = users.find(u => u.role === 'supplier' && u.email !== 'manufacturer@pharmatech.com');
-    const manufacturer = users.find(u => u.role === 'supplier' && u.email === 'manufacturer@pharmatech.com');
+    const supplier = users.find(u => u.email === 'supplier@medisupply.com');
+    const manufacturer = users.find(u => u.email === 'manufacturer@pharmatech.com');
 
     const medicines = [
       {
@@ -457,9 +457,9 @@ const seedOrders = async (users, medicines) => {
     await Order.deleteMany({});
     console.log('🗑️  Existing orders cleared');
 
-    const hospital = users.find(u => u.role === 'hospital');
-    const pharmacy = users.find(u => u.role === 'retailer');
-    const supplier = users.find(u => u.role === 'supplier');
+    const hospital = users.find(u => u.email === 'hospital@citygeneral.com');
+    const pharmacy = users.find(u => u.email === 'pharmacy@centralpharm.com');
+    const supplier = users.find(u => u.email === 'supplier@medisupply.com');
 
     const orders = [
       {
