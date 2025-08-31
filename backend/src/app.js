@@ -16,6 +16,7 @@ try {
   console.log('✅ Auth routes loaded');
 } catch (error) {
   console.error('❌ Failed to load auth routes:', error.message);
+  console.error('❌ Auth routes stack:', error.stack);
 }
 
 try {
@@ -65,6 +66,7 @@ try {
   console.log('✅ AI routes loaded');
 } catch (error) {
   console.error('❌ Failed to load AI routes:', error.message);
+  console.error('❌ AI routes stack:', error.stack);
 }
 
 try {
