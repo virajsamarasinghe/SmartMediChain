@@ -8,17 +8,78 @@ const rateLimit = require('express-rate-limit');
 require('express-async-errors');
 require('dotenv').config();
 
-// Import routes
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
-const medicineRoutes = require('./routes/medicines');
-const orderRoutes = require('./routes/orders');
-const supplierRoutes = require('./routes/suppliers');
-const inventoryRoutes = require('./routes/inventory');
-const analyticsRoutes = require('./routes/analytics');
-const aiRoutes = require('./routes/ai');
-const blockchainRoutes = require('./routes/blockchain');
-const approvalRoutes = require('./routes/approvals');
+// Import routes with error handling
+let authRoutes, userRoutes, medicineRoutes, orderRoutes, supplierRoutes, inventoryRoutes, analyticsRoutes, aiRoutes, blockchainRoutes, approvalRoutes;
+
+try {
+  authRoutes = require('./routes/auth');
+  console.log('✅ Auth routes loaded');
+} catch (error) {
+  console.error('❌ Failed to load auth routes:', error.message);
+}
+
+try {
+  userRoutes = require('./routes/users');
+  console.log('✅ User routes loaded');
+} catch (error) {
+  console.error('❌ Failed to load user routes:', error.message);
+}
+
+try {
+  medicineRoutes = require('./routes/medicines');
+  console.log('✅ Medicine routes loaded');
+} catch (error) {
+  console.error('❌ Failed to load medicine routes:', error.message);
+}
+
+try {
+  orderRoutes = require('./routes/orders');
+  console.log('✅ Order routes loaded');
+} catch (error) {
+  console.error('❌ Failed to load order routes:', error.message);
+}
+
+try {
+  supplierRoutes = require('./routes/suppliers');
+  console.log('✅ Supplier routes loaded');
+} catch (error) {
+  console.error('❌ Failed to load supplier routes:', error.message);
+}
+
+try {
+  inventoryRoutes = require('./routes/inventory');
+  console.log('✅ Inventory routes loaded');
+} catch (error) {
+  console.error('❌ Failed to load inventory routes:', error.message);
+}
+
+try {
+  analyticsRoutes = require('./routes/analytics');
+  console.log('✅ Analytics routes loaded');
+} catch (error) {
+  console.error('❌ Failed to load analytics routes:', error.message);
+}
+
+try {
+  aiRoutes = require('./routes/ai');
+  console.log('✅ AI routes loaded');
+} catch (error) {
+  console.error('❌ Failed to load AI routes:', error.message);
+}
+
+try {
+  blockchainRoutes = require('./routes/blockchain');
+  console.log('✅ Blockchain routes loaded');
+} catch (error) {
+  console.error('❌ Failed to load blockchain routes:', error.message);
+}
+
+try {
+  approvalRoutes = require('./routes/approvals');
+  console.log('✅ Approval routes loaded');
+} catch (error) {
+  console.error('❌ Failed to load approval routes:', error.message);
+}
 
 // Import middleware
 const errorHandler = require('./middleware/errorHandler');
@@ -77,17 +138,76 @@ app.get('/health', (req, res) => {
   });
 });
 
-// API Routes
-app.use('/api/auth', authRoutes);
-app.use('/api/users', auth, userRoutes);
-app.use('/api/medicines', auth, medicineRoutes);
-app.use('/api/orders', auth, orderRoutes);
-app.use('/api/suppliers', auth, supplierRoutes);
-app.use('/api/inventory', auth, inventoryRoutes);
-app.use('/api/analytics', auth, analyticsRoutes);
-app.use('/api/ai', aiRoutes);
-app.use('/api/blockchain', blockchainRoutes);
-app.use('/api/approvals', auth, approvalRoutes);
+// Debug endpoint to test routing
+app.get('/debug', (req, res) => {
+  res.status(200).json({
+    status: 'success',
+    message: 'Debug endpoint working',
+    routes_loaded: {
+      auth: !!authRoutes,
+      users: !!userRoutes,
+      medicines: !!medicineRoutes,
+      orders: !!orderRoutes,
+      suppliers: !!supplierRoutes,
+      inventory: !!inventoryRoutes,
+      analytics: !!analyticsRoutes,
+      ai: !!aiRoutes,
+      blockchain: !!blockchainRoutes,
+      approvals: !!approvalRoutes
+    }
+  });
+});
+
+// API Routes - only register if loaded successfully
+if (authRoutes) {
+  app.use('/api/auth', authRoutes);
+  console.log('✅ Auth routes registered');
+}
+
+if (userRoutes) {
+  app.use('/api/users', auth, userRoutes);
+  console.log('✅ User routes registered');
+}
+
+if (medicineRoutes) {
+  app.use('/api/medicines', auth, medicineRoutes);
+  console.log('✅ Medicine routes registered');
+}
+
+if (orderRoutes) {
+  app.use('/api/orders', auth, orderRoutes);
+  console.log('✅ Order routes registered');
+}
+
+if (supplierRoutes) {
+  app.use('/api/suppliers', auth, supplierRoutes);
+  console.log('✅ Supplier routes registered');
+}
+
+if (inventoryRoutes) {
+  app.use('/api/inventory', auth, inventoryRoutes);
+  console.log('✅ Inventory routes registered');
+}
+
+if (analyticsRoutes) {
+  app.use('/api/analytics', auth, analyticsRoutes);
+  console.log('✅ Analytics routes registered');
+}
+
+if (aiRoutes) {
+  app.use('/api/ai', aiRoutes);
+  console.log('✅ AI routes registered');
+}
+
+if (blockchainRoutes) {
+  app.use('/api/blockchain', blockchainRoutes);
+  console.log('✅ Blockchain routes registered');
+}
+
+if (approvalRoutes) {
+  app.use('/api/approvals', auth, approvalRoutes);
+  console.log('✅ Approval routes registered');
+}
 
 // Error handling middleware
 app.use(notFound);

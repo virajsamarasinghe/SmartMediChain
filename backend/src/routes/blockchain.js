@@ -9,7 +9,7 @@ const blockchainController = require('../controllers/blockchainController');
 const { auth } = require('../middleware/auth');
 
 // Initialize blockchain service when routes are loaded
-blockchainController.initializeService();
+// blockchainController.initializeService();
 
 /**
  * @route POST /api/blockchain/place-order
