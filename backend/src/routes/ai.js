@@ -11,6 +11,125 @@ const {
 } = require('../controllers/aiController');
 
 /**
+ * @swagger
+ * /api/ai/health:
+ *   get:
+ *     summary: Check AI model health
+ *     description: Check the health status of AI prediction models
+ *     tags: [AI & Predictions]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: AI model health status
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     status:
+ *                       type: string
+ *                       example: "healthy"
+ *                     models:
+ *                       type: array
+ *                       items:
+ *                         type: object
+ *                         properties:
+ *                           name:
+ *                             type: string
+ *                             example: "demand_prediction"
+ *                           status:
+ *                             type: string
+ *                             example: "active"
+ *
+ * /api/ai/medicine/{medicineId}/demand:
+ *   get:
+ *     summary: Get medicine demand prediction
+ *     description: Get AI-powered demand prediction for a specific medicine
+ *     tags: [AI & Predictions]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: medicineId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Medicine ID
+ *       - in: query
+ *         name: days
+ *         schema:
+ *           type: number
+ *           default: 30
+ *         description: Number of days to predict
+ *     responses:
+ *       200:
+ *         description: Demand prediction retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 data:
+ *                   type: object
+ *                   properties:
+ *                     prediction:
+ *                       type: object
+ *                       properties:
+ *                         expectedDemand:
+ *                           type: number
+ *                           example: 150
+ *                         confidence:
+ *                           type: number
+ *                           example: 0.85
+ *                         trend:
+ *                           type: string
+ *                           example: "increasing"
+ *
+ * /api/ai/inventory/optimization:
+ *   get:
+ *     summary: Get inventory optimization recommendations
+ *     description: Get AI-powered inventory optimization suggestions
+ *     tags: [AI & Predictions]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Optimization recommendations retrieved successfully
+ *
+ * /api/ai/reorder-suggestions:
+ *   get:
+ *     summary: Get reorder suggestions
+ *     description: Get AI-powered reorder suggestions based on current inventory and demand
+ *     tags: [AI & Predictions]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Reorder suggestions retrieved successfully
+ *
+ * /api/ai/insights:
+ *   get:
+ *     summary: Get AI insights
+ *     description: Get comprehensive AI insights and analytics
+ *     tags: [AI & Predictions]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: AI insights retrieved successfully
+ */
+
+/**
  * @route   GET /api/ai/health
  * @desc    Check AI model health status
  * @access  Private

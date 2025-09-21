@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect } from 'react';
+import { createContext, useEffect, useState } from 'react';
 import { medicineService } from '../services/medicineService';
 
 export const MedicineContext = createContext();
@@ -43,44 +43,8 @@ export const MedicineProvider = ({ children }) => {
             console.log('API Error Response:', error.response);
             console.log('JWT Token:', localStorage.getItem('token'));
             
-            // We'll keep the mock data for development but log a clear message
-            console.warn('Using mock data for development purposes');
-            const mockMedicines = [
-                {
-                    id: '64a1b2c3d4e5f6a7b8c9d0e1',
-                    name: 'Paracetamol',
-                    manufacturer: 'ABC Pharma',
-                    expiryDate: '2026-12-31',
-                    batchNumber: 'BATCH001',
-                    quantity: 100,
-                    currentStock: 100,
-                    minRequired: 50,
-                    maxCapacity: 200
-                },
-                {
-                    id: '64a1b2c3d4e5f6a7b8c9d0e2',
-                    name: 'Amoxicillin',
-                    manufacturer: 'XYZ Pharmaceuticals',
-                    expiryDate: '2026-10-15',
-                    batchNumber: 'BATCH002',
-                    quantity: 50,
-                    currentStock: 50,
-                    minRequired: 30,
-                    maxCapacity: 150
-                },
-                {
-                    id: '64a1b2c3d4e5f6a7b8c9d0e3',
-                    name: 'Ibuprofen',
-                    manufacturer: 'Health Solutions',
-                    expiryDate: '2027-03-22',
-                    batchNumber: 'BATCH003',
-                    quantity: 75,
-                    currentStock: 75,
-                    minRequired: 40,
-                    maxCapacity: 180
-                }
-            ];
-            setMedicines(mockMedicines);
+            // Clear medicines array on error - no fallback to demo data
+            setMedicines([]);
         } finally {
             setLoading(false);
         }

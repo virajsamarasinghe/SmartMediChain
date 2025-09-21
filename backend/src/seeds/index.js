@@ -207,6 +207,75 @@ const seedUsers = async () => {
           phone: '+1-555-0004',
           specialization: 'Senior Management'
         }
+      },
+      {
+        name: 'Tom Pharmacy Order Manager',
+        email: 'pharmacy.orders@smartmedichain.com',
+        password: 'pharmacy123',
+        role: 'pharmacy_order_manager',
+        isVerified: true,
+        organization: {
+          name: 'SmartMediChain Pharmacy Orders',
+          type: 'pharmacy',
+          address: {
+            street: '987 Order Management St',
+            city: 'Pharmacy City',
+            state: 'WA',
+            zipCode: '98103',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0005',
+          specialization: 'Pharmacy Order Management'
+        }
+      },
+      {
+        name: 'General Hospital User',
+        email: 'hospital.user@smartmedichain.com',
+        password: 'hospital123',
+        role: 'hospital',
+        isVerified: true,
+        organization: {
+          name: 'General Hospital System',
+          type: 'hospital',
+          license: 'HOSP-2024-002',
+          address: {
+            street: '555 Hospital Drive',
+            city: 'Healthcare City',
+            state: 'CA',
+            zipCode: '90213',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0006',
+          specialization: 'Hospital Operations'
+        }
+      },
+      {
+        name: 'Medical Supplier Co',
+        email: 'supplier.user@smartmedichain.com',
+        password: 'supplier123',
+        role: 'supplier',
+        isVerified: true,
+        organization: {
+          name: 'Medical Supplier Co',
+          type: 'supplier',
+          license: 'SUP-2024-002',
+          address: {
+            street: '777 Supply Chain Blvd',
+            city: 'Supply City',
+            state: 'TX',
+            zipCode: '75003',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0007',
+          licenseNumber: 'SUP-LIC-002',
+          specialization: 'Medical Equipment Supply'
+        }
       }
     ];
 
@@ -575,6 +644,255 @@ const seedOrders = async (users, medicines) => {
   }
 };
 
+// Auto-seed function that checks and creates missing users for all roles
+const autoSeedUsers = async () => {
+  try {
+    const requiredRoles = [
+      'admin',
+      'supplier',
+      'hospital',
+      'operations_manager',
+      'compliance_manager',
+      'finance_manager',
+      'senior_manager',
+      'pharmacy_stock_manager',
+      'pharmacy_order_manager'
+    ];
+
+    const defaultUsers = [
+      {
+        name: 'Admin User',
+        email: 'admin@smartmedichain.com',
+        password: 'admin123',
+        role: 'admin',
+        isVerified: true,
+        organization: {
+          name: 'SmartMediChain Admin',
+          type: 'hospital',
+          address: {
+            street: '123 Admin St',
+            city: 'Tech City',
+            state: 'CA',
+            zipCode: '90210',
+            country: 'USA'
+          }
+        }
+      },
+      {
+        name: 'Medical Supplier Co',
+        email: 'supplier@smartmedichain.com',
+        password: 'supplier123',
+        role: 'supplier',
+        isVerified: true,
+        organization: {
+          name: 'Medical Supplier Co',
+          type: 'supplier',
+          license: 'SUP-2024-001',
+          address: {
+            street: '777 Supply Chain Blvd',
+            city: 'Supply City',
+            state: 'TX',
+            zipCode: '75003',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0007',
+          licenseNumber: 'SUP-LIC-002'
+        }
+      },
+      {
+        name: 'General Hospital User',
+        email: 'hospital@smartmedichain.com',
+        password: 'hospital123',
+        role: 'hospital',
+        isVerified: true,
+        organization: {
+          name: 'General Hospital System',
+          type: 'hospital',
+          license: 'HOSP-2024-001',
+          address: {
+            street: '555 Hospital Drive',
+            city: 'Healthcare City',
+            state: 'CA',
+            zipCode: '90213',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0006'
+        }
+      },
+      {
+        name: 'John Operations Manager',
+        email: 'operations@smartmedichain.com',
+        password: 'operations123',
+        role: 'operations_manager',
+        isVerified: true,
+        organization: {
+          name: 'SmartMediChain Operations',
+          type: 'hospital',
+          address: {
+            street: '123 Operations St',
+            city: 'Management City',
+            state: 'CA',
+            zipCode: '90211',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0001',
+          specialization: 'Operations Management'
+        }
+      },
+      {
+        name: 'Sarah Compliance Manager',
+        email: 'compliance@smartmedichain.com',
+        password: 'compliance123',
+        role: 'compliance_manager',
+        isVerified: true,
+        organization: {
+          name: 'SmartMediChain Compliance',
+          type: 'hospital',
+          address: {
+            street: '456 Compliance Ave',
+            city: 'Regulatory City',
+            state: 'NY',
+            zipCode: '10002',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0002',
+          specialization: 'Regulatory Compliance'
+        }
+      },
+      {
+        name: 'Mike Finance Manager',
+        email: 'finance@smartmedichain.com',
+        password: 'finance123',
+        role: 'finance_manager',
+        isVerified: true,
+        organization: {
+          name: 'SmartMediChain Finance',
+          type: 'hospital',
+          address: {
+            street: '789 Finance Blvd',
+            city: 'Financial City',
+            state: 'TX',
+            zipCode: '75002',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0003',
+          specialization: 'Financial Management'
+        }
+      },
+      {
+        name: 'Lisa Senior Manager',
+        email: 'senior@smartmedichain.com',
+        password: 'senior123',
+        role: 'senior_manager',
+        isVerified: true,
+        organization: {
+          name: 'SmartMediChain Senior Management',
+          type: 'hospital',
+          address: {
+            street: '321 Executive Way',
+            city: 'Executive City',
+            state: 'FL',
+            zipCode: '33102',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0004',
+          specialization: 'Senior Management'
+        }
+      },
+      {
+        name: 'Central Pharmacy Stock Manager',
+        email: 'pharmacy.stock@smartmedichain.com',
+        password: 'pharmacy123',
+        role: 'pharmacy_stock_manager',
+        isVerified: true,
+        organization: {
+          name: 'Central Pharmacy Chain',
+          type: 'pharmacy',
+          license: 'PHARM-2024-001',
+          address: {
+            street: '654 Pharmacy Lane',
+            city: 'Retail City',
+            state: 'WA',
+            zipCode: '98101',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0005',
+          specialization: 'Pharmacy Stock Management'
+        }
+      },
+      {
+        name: 'Tom Pharmacy Order Manager',
+        email: 'pharmacy.orders@smartmedichain.com',
+        password: 'pharmacy123',
+        role: 'pharmacy_order_manager',
+        isVerified: true,
+        organization: {
+          name: 'SmartMediChain Pharmacy Orders',
+          type: 'pharmacy',
+          address: {
+            street: '987 Order Management St',
+            city: 'Pharmacy City',
+            state: 'WA',
+            zipCode: '98103',
+            country: 'USA'
+          }
+        },
+        profile: {
+          phone: '+1-555-0008',
+          specialization: 'Pharmacy Order Management'
+        }
+      }
+    ];
+
+    let createdUsers = [];
+    let existingCount = 0;
+
+    for (const role of requiredRoles) {
+      const existingUser = await User.findOne({ role });
+
+      if (!existingUser) {
+        const defaultUser = defaultUsers.find(u => u.role === role);
+        if (defaultUser) {
+          const newUser = await User.create(defaultUser);
+          createdUsers.push(newUser);
+          console.log(`✅ Created default ${role} user: ${defaultUser.email}`);
+        }
+      } else {
+        existingCount++;
+      }
+    }
+
+    if (createdUsers.length > 0) {
+      console.log(`🌱 Auto-seeded ${createdUsers.length} missing users`);
+      console.log('📧 Default login credentials:');
+      defaultUsers.forEach(user => {
+        console.log(`   ${user.role}: ${user.email} / ${user.password}`);
+      });
+    } else if (existingCount > 0) {
+      console.log(`✅ All required user roles already exist (${existingCount} users found)`);
+    }
+
+    return createdUsers;
+  } catch (error) {
+    console.error('❌ Error in auto-seeding users:', error);
+    return [];
+  }
+};
+
 const seedDatabase = async () => {
   try {
     await connectDB();
@@ -586,15 +904,18 @@ const seedDatabase = async () => {
     await seedOrders(users, medicines);
 
     console.log('✅ Database seeding completed successfully!');
-    console.log('📧 Login credentials:');
-    console.log('   Admin: admin@smartmedichain.com / admin123');
-    console.log('   Supplier: supplier@medisupply.com / supplier123');
-    console.log('   Hospital: hospital@citygeneral.com / hospital123');
-    console.log('   Pharmacy: pharmacy@centralpharm.com / pharmacy123');
-    console.log('   Operations Manager: operations@smartmedichain.com / operations123');
-    console.log('   Compliance Manager: compliance@smartmedichain.com / compliance123');
-    console.log('   Finance Manager: finance@smartmedichain.com / finance123');
-    console.log('   Senior Manager: senior@smartmedichain.com / senior123');
+    console.log('📧 Login credentials for all roles:');
+    console.log('   🔑 Admin: admin@smartmedichain.com / admin123');
+    console.log('   🏭 Supplier: supplier@medisupply.com / supplier123');
+    console.log('   🏭 Supplier User: supplier.user@smartmedichain.com / supplier123');
+    console.log('   🏥 Hospital: hospital@citygeneral.com / hospital123');
+    console.log('   🏥 Hospital User: hospital.user@smartmedichain.com / hospital123');
+    console.log('   💊 Pharmacy Stock: pharmacy@centralpharm.com / pharmacy123');
+    console.log('   📦 Pharmacy Orders: pharmacy.orders@smartmedichain.com / pharmacy123');
+    console.log('   ⚙️  Operations Manager: operations@smartmedichain.com / operations123');
+    console.log('   📋 Compliance Manager: compliance@smartmedichain.com / compliance123');
+    console.log('   💰 Finance Manager: finance@smartmedichain.com / finance123');
+    console.log('   👔 Senior Manager: senior@smartmedichain.com / senior123');
 
     process.exit(0);
   } catch (error) {
@@ -608,4 +929,4 @@ if (require.main === module) {
   seedDatabase();
 }
 
-module.exports = { seedDatabase };
+module.exports = { seedDatabase, autoSeedUsers };

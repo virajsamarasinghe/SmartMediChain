@@ -5,11 +5,18 @@
 
 const SmartContractService = require('../services/smartContractService');
 const AIModelService = require('../services/aiModelService');
+const Order = require('../models/Order');
 
 class BlockchainController {
     constructor() {
         this.smartContractService = new SmartContractService();
         this.isInitialized = false;
+        // Add caching for blockchain status
+        this.statusCache = {
+            data: null,
+            lastUpdated: null,
+            cacheTimeout: 10000 // 10 seconds cache
+        };
     }
 
     /**
@@ -108,9 +115,66 @@ class BlockchainController {
                 orderStatus = 'APPROVED';
             }
 
-            // 4. Save to traditional database (mock for now)
+            // 4. Save to traditional database
+            const orderNumber = `BC-${Date.now()}`;
+            
+            const databaseOrder = new Order({
+                orderNumber,
+                orderType: 'purchase',
+                customer: userId,
+                supplier: userId, // For now, using same user as both customer and supplier
+                items: [{
+                    medicine: medicineId,
+                    quantity: quantity,
+                    unitPrice: pricePerUnit,
+                    totalPrice: quantity * pricePerUnit
+                }],
+                pricing: {
+                    subtotal: quantity * pricePerUnit,
+                    tax: 0,
+                    total: quantity * pricePerUnit
+                },
+                status: (orderStatus === 'FLAGGED_FOR_REVIEW' ? 'pending' : 'approved'),
+                priority: aiResult.riskLevel === 'HIGH' || aiResult.riskLevel === 'CRITICAL' ? 'urgent' : 'normal',
+                notes: aiResult.isFraud ? 'FRAUD DETECTED by AI model' : 'AI fraud check passed',
+                metadata: {
+                    aiDetection: aiResult,
+                    blockchainData: blockchainResult,
+                    blockchainOrderId
+                },
+                createdBy: userId
+            });
+
+            let savedOrder;
+            try {
+                savedOrder = await databaseOrder.save();
+                console.log('✅ Order saved to database with ID:', savedOrder._id);
+                
+                // Verify the order was actually saved by querying it back
+                const verifyOrder = await Order.findById(savedOrder._id);
+                if (!verifyOrder) {
+                    console.error('❌ Order verification failed - not found in database after save');
+                    throw new Error('Order was not properly saved to database');
+                } else {
+                    console.log('✅ Order verification successful:', verifyOrder._id);
+                }
+                
+                // Add a small delay to ensure database consistency
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+            } catch (dbError) {
+                console.error('❌ Failed to save order to database:', dbError);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to save order to database',
+                    error: dbError.message
+                });
+            }
+
             const orderData = {
+                _id: savedOrder._id,
                 id: Date.now().toString(),
+                orderNumber: savedOrder.orderNumber,
                 medicineId,
                 medicineName,
                 quantity,
@@ -227,17 +291,22 @@ class BlockchainController {
     getOrderFromBlockchain = async (req, res) => {
         try {
             const { blockchainOrderId } = req.params;
+            console.log('🔍 Getting order from blockchain with ID:', blockchainOrderId);
 
             if (!this.isInitialized) {
+                console.log('❌ Blockchain service not initialized');
                 return res.status(503).json({
                     success: false,
                     message: 'Blockchain service not available'
                 });
             }
 
+            console.log('📡 Calling smartContractService.getOrder...');
             const orderResult = await this.smartContractService.getOrder(blockchainOrderId);
+            console.log('📊 Order result:', orderResult);
 
             if (!orderResult.success) {
+                console.log('⚠️ Order not found on blockchain');
                 return res.status(404).json({
                     success: false,
                     message: 'Order not found on blockchain',
@@ -246,9 +315,11 @@ class BlockchainController {
             }
 
             // Also get fraud detection result and approvals
+            console.log('🔍 Getting fraud detection and approvals...');
             const fraudResult = await this.smartContractService.getFraudDetectionResult(blockchainOrderId);
             const approvalsResult = await this.smartContractService.getManagerApprovals(blockchainOrderId);
 
+            console.log('✅ Successfully retrieved blockchain order data');
             res.json({
                 success: true,
                 data: {
@@ -273,10 +344,35 @@ class BlockchainController {
      */
     getBlockchainStatus = async (req, res) => {
         try {
+            const now = Date.now();
+            const clientIp = req.ip || req.connection.remoteAddress;
+            
+            // Check if we have cached data that's still valid
+            if (this.statusCache.data && 
+                this.statusCache.lastUpdated && 
+                (now - this.statusCache.lastUpdated) < this.statusCache.cacheTimeout) {
+                
+                // Set cache headers for client-side caching
+                res.set({
+                    'Cache-Control': 'public, max-age=10',
+                    'ETag': `"${this.statusCache.lastUpdated}"`,
+                    'Last-Modified': new Date(this.statusCache.lastUpdated).toUTCString()
+                });
+                
+                console.log(`🔄 [${clientIp}] Served cached blockchain status`);
+                return res.json({
+                    success: true,
+                    data: this.statusCache.data,
+                    cached: true
+                });
+            }
+
+            console.log(`📡 [${clientIp}] Fetching fresh blockchain status`);
             const status = {
                 isConnected: this.smartContractService.isConnected(),
                 contractAddress: this.smartContractService.getContractAddress(),
-                currentBlock: null
+                currentBlock: null,
+                timestamp: now
             };
 
             if (status.isConnected) {
@@ -287,9 +383,22 @@ class BlockchainController {
                 }
             }
 
+            // Cache the status
+            this.statusCache.data = status;
+            this.statusCache.lastUpdated = now;
+
+            // Set cache headers
+            res.set({
+                'Cache-Control': 'public, max-age=10',
+                'ETag': `"${now}"`,
+                'Last-Modified': new Date(now).toUTCString()
+            });
+
+            console.log(`✅ [${clientIp}] Fresh blockchain status served`);
             res.json({
                 success: true,
-                data: status
+                data: status,
+                cached: false
             });
 
         } catch (error) {

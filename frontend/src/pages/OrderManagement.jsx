@@ -1,8 +1,8 @@
-import React, { useEffect, useState, useContext } from 'react';
-import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
-import { API_URL } from '../config';
+import { useContext, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
+import { API_URL } from '../config';
+import { AuthContext } from '../context/AuthContext';
 
 const OrderManagement = () => {
     const [orders, setOrders] = useState([]);
@@ -103,6 +103,7 @@ const OrderManagement = () => {
                         <option value="shipped">Shipped</option>
                         <option value="delivered">Delivered</option>
                         <option value="cancelled">Cancelled</option>
+                        <option value="rejected">Rejected</option>
                     </select>
                     <select
                         name="sortBy"
@@ -140,6 +141,7 @@ const OrderManagement = () => {
                                     <th className="py-3 px-4 text-left border-b">Date</th>
                                     <th className="py-3 px-4 text-left border-b">Customer</th>
                                     <th className="py-3 px-4 text-left border-b">Status</th>
+                                    <th className="py-3 px-4 text-left border-b">Approval</th>
                                     <th className="py-3 px-4 text-left border-b">Total</th>
                                     <th className="py-3 px-4 text-left border-b">Actions</th>
                                 </tr>
@@ -162,10 +164,45 @@ const OrderManagement = () => {
                                                     order.status === 'processing' ? 'bg-purple-100 text-purple-800' :
                                                     order.status === 'shipped' ? 'bg-indigo-100 text-indigo-800' :
                                                     order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                                                    order.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                                    order.status === 'rejected' ? 'bg-red-100 text-red-800' :
                                                     'bg-gray-100 text-gray-800'
                                                 }`}>
                                                     {order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
                                                 </span>
+                                            </td>
+                                            <td className="py-3 px-4 border-b">
+                                                <div className="flex items-center gap-2">
+                                                    <span className={`px-2 py-1 rounded-full text-xs ${
+                                                        order.approvalStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                        order.approvalStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                                                        order.approvalStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                        'bg-gray-100 text-gray-800'
+                                                    }`}>
+                                                        {order.approvalStatus ? 
+                                                            order.approvalStatus.charAt(0).toUpperCase() + order.approvalStatus.slice(1) 
+                                                            : 'Pending'
+                                                        }
+                                                    </span>
+                                                    {order.metadata?.approvalBlockchain?.logged && (
+                                                        <span 
+                                                            className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                                                            title={`Blockchain verified - TX: ${order.metadata.approvalBlockchain.transactionHash}`}
+                                                        >
+                                                            🔗
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                {order.rejectionReason && (
+                                                    <div className="text-xs text-red-600 mt-1">
+                                                        Reason: {order.rejectionReason}
+                                                    </div>
+                                                )}
+                                                {order.metadata?.approvalBlockchain?.logged && (
+                                                    <div className="text-xs text-blue-600 mt-1">
+                                                        Block #{order.metadata.approvalBlockchain.blockNumber}
+                                                    </div>
+                                                )}
                                             </td>
                                             <td className="py-3 px-4 border-b">
                                                 ${order.pricing?.total?.toFixed(2) || '0.00'}

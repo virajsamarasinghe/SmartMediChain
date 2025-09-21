@@ -1,8 +1,8 @@
-import React, { useState, useContext, useEffect } from 'react';
+import { useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/AuthContext';
-import Input from '../components/common/Input';
 import Button from '../components/common/Button';
+import Input from '../components/common/Input';
+import { AuthContext } from '../context/AuthContext';
 // No need for CSS import with Tailwind
 
 const Login = () => {
@@ -36,14 +36,21 @@ const Login = () => {
 
         setIsLoading(true);
         try {
-            const success = await login(email, password);
-            if (success) {
+            console.log('🔐 Login component: Attempting login');
+            const result = await login(email, password);
+            
+            console.log('📥 Login component: Result received', result);
+            
+            if (result.success) {
+                console.log('✅ Login successful, navigating to dashboard');
                 navigate('/dashboard');
             } else {
-                setError('Invalid email or password');
+                console.log('❌ Login failed:', result.message);
+                setError(result.message || 'Invalid email or password');
             }
         } catch (error) {
-            setError('Login failed. Please try again.');
+            console.error('❌ Login component: Unexpected error:', error);
+            setError(error.message || 'Login failed. Please try again.');
         } finally {
             setIsLoading(false);
         }

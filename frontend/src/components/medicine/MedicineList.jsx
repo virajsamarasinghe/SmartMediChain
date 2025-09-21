@@ -1,10 +1,10 @@
-import React, { useContext, useState } from 'react';
+import { useContext, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { MedicineContext } from '../../context/MedicineContext';
 import MedicineForm from './MedicineForm';
 
 const MedicineList = () => {
-    const { medicines, deleteMedicine, getMedicineById } = useContext(MedicineContext);
+    const { medicines, loading, error, deleteMedicine, getMedicineById, refreshMedicines } = useContext(MedicineContext);
     const [editingMedicine, setEditingMedicine] = useState(null);
     const [showEditModal, setShowEditModal] = useState(false);
 
@@ -105,10 +105,37 @@ const MedicineList = () => {
                             </tr>
                         </thead>
                         <tbody className="bg-white divide-y divide-gray-200">
-                            {medicines.length === 0 ? (
+                            {loading ? (
                                 <tr>
                                     <td colSpan="10" className="px-6 py-4 text-center text-gray-500">
-                                        No medicines available
+                                        <div className="flex justify-center items-center">
+                                            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                                            <span className="ml-2">Loading medicines...</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : error ? (
+                                <tr>
+                                    <td colSpan="10" className="px-6 py-4 text-center">
+                                        <div className="text-red-600">
+                                            <div className="text-lg font-medium">Error loading medicines</div>
+                                            <div className="text-sm mt-1">{error}</div>
+                                            <button 
+                                                onClick={refreshMedicines} 
+                                                className="mt-2 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                            >
+                                                Retry
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            ) : medicines.length === 0 ? (
+                                <tr>
+                                    <td colSpan="10" className="px-6 py-4 text-center text-gray-500">
+                                        <div>
+                                            <div className="text-lg font-medium">No medicines available</div>
+                                            <div className="text-sm mt-1">Add your first medicine to get started</div>
+                                        </div>
                                     </td>
                                 </tr>
                             ) : (

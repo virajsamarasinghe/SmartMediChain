@@ -1,24 +1,24 @@
-import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import Login from './pages/Login';
-import Dashboard from './pages/Dashboard';
-import MedicineManagement from './pages/MedicineManagement';
-import PlaceOrder from './pages/PlaceOrder';
-import Profile from './pages/Profile';
-import Notifications from './pages/Notifications';
-import Settings from './pages/Settings';
-import UserManagement from './pages/UserManagement';
-import ApprovalsPage from './pages/ApprovalsPage';
-import BlockchainValidationPage from './pages/BlockchainValidation';
-import NotFound from './pages/NotFound';
-import Layout from './components/layout/Layout';
-import ProtectedRoute from './components/common/ProtectedRoute';
+import { Route, BrowserRouter as Router, Routes } from 'react-router-dom';
 import AdminRoute from './components/common/AdminRoute';
 import ManagerRoute from './components/common/ManagerRoute';
+import NonManagerRoute from './components/common/NonManagerRoute';
+import ProtectedRoute from './components/common/ProtectedRoute';
+import Layout from './components/layout/Layout';
+import ApprovalsPage from './pages/ApprovalsPage';
+import BlockchainValidationPage from './pages/BlockchainValidation';
+import Dashboard from './pages/Dashboard';
+import Login from './pages/Login';
+import MedicineManagement from './pages/MedicineManagement';
+import NotFound from './pages/NotFound';
+import Notifications from './pages/Notifications';
+import PlaceOrder from './pages/PlaceOrder';
+import Profile from './pages/Profile';
+import Settings from './pages/Settings';
+import UserManagement from './pages/UserManagement';
 
 const AppRoutes = () => {
     return (
-        <Router>
+        <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
                 <Route path="/" element={<Login />} />
                 <Route path="/login" element={<Login />} />
@@ -29,12 +29,16 @@ const AppRoutes = () => {
                 } />
                 <Route path="/medicine-management" element={
                     <ProtectedRoute>
-                        <Layout><MedicineManagement /></Layout>
+                        <NonManagerRoute>
+                            <Layout><MedicineManagement /></Layout>
+                        </NonManagerRoute>
                     </ProtectedRoute>
                 } />
                 <Route path="/order-medicines" element={
                     <ProtectedRoute>
-                        <Layout><PlaceOrder /></Layout>
+                        <NonManagerRoute>
+                            <Layout><PlaceOrder /></Layout>
+                        </NonManagerRoute>
                     </ProtectedRoute>
                 } />
                 <Route path="/profile" element={
@@ -68,7 +72,9 @@ const AppRoutes = () => {
                 } />
                 <Route path="/blockchain-validation" element={
                     <ProtectedRoute>
-                        <Layout><BlockchainValidationPage /></Layout>
+                        <NonManagerRoute>
+                            <Layout><BlockchainValidationPage /></Layout>
+                        </NonManagerRoute>
                     </ProtectedRoute>
                 } />
                 <Route path="*" element={<NotFound />} />

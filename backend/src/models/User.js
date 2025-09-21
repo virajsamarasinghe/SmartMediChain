@@ -23,10 +23,10 @@ const userSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['admin', 
-           'operations_manager', 'compliance_manager', 'finance_manager', 'senior_manager',
-           'pharmacy_stock_manager', 'pharmacy_order_manager'],
-    default: 'patient'
+    enum: ['admin', 'supplier', 'hospital',
+      'operations_manager', 'compliance_manager', 'finance_manager', 'senior_manager',
+      'pharmacy_stock_manager', 'pharmacy_order_manager'],
+    default: 'hospital'
   },
   organization: {
     name: String,
@@ -77,20 +77,20 @@ userSchema.index({ role: 1 });
 userSchema.index({ 'organization.type': 1 });
 
 // Pre-save middleware to hash password
-userSchema.pre('save', async function(next) {
+userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();
-  
+
   this.password = await bcrypt.hash(this.password, parseInt(process.env.BCRYPT_SALT_ROUNDS) || 12);
   next();
 });
 
 // Method to compare password
-userSchema.methods.comparePassword = async function(candidatePassword) {
+userSchema.methods.comparePassword = async function (candidatePassword) {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
 // Method to get public profile
-userSchema.methods.getPublicProfile = function() {
+userSchema.methods.getPublicProfile = function () {
   const user = this.toObject();
   delete user.password;
   delete user.refreshTokens;

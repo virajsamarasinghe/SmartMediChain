@@ -8,6 +8,14 @@ import { authService } from './authService';
 const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
 
 class BlockchainService {
+    constructor() {
+        // Add client-side caching for status
+        this.statusCache = {
+            data: null,
+            lastFetched: null,
+            cacheTimeout: 10000 // 10 seconds
+        };
+    }
     /**
      * Place order with fraud detection and blockchain logging
      * @param {Object} orderData - Order data
@@ -100,17 +108,29 @@ class BlockchainService {
     }
 
     /**
-     * Get blockchain service status
+     * Get blockchain service status with caching
      * @returns {Promise<Object>} API response
      */
     async getBlockchainStatus() {
         try {
+            const now = Date.now();
+            
+            // Check if we have cached data that's still valid
+            if (this.statusCache.data && 
+                this.statusCache.lastFetched && 
+                (now - this.statusCache.lastFetched) < this.statusCache.cacheTimeout) {
+                
+                console.log('🔄 Using cached blockchain status');
+                return this.statusCache.data;
+            }
+
             const token = authService.getToken();
 
             const response = await fetch(`${API_BASE_URL}/api/blockchain/status`, {
                 method: 'GET',
                 headers: {
-                    'Authorization': `Bearer ${token}`
+                    'Authorization': `Bearer ${token}`,
+                    'Cache-Control': 'max-age=10' // Request 10 second caching
                 }
             });
 
@@ -120,6 +140,11 @@ class BlockchainService {
                 throw new Error(data.message || 'Failed to get blockchain status');
             }
 
+            // Cache the response
+            this.statusCache.data = data;
+            this.statusCache.lastFetched = now;
+            
+            console.log('📡 Fetched fresh blockchain status');
             return data;
         } catch (error) {
             console.error('Error getting blockchain status:', error);
@@ -191,14 +216,45 @@ class BlockchainService {
     }
 
     /**
+     * Clear blockchain status cache
+     */
+    clearStatusCache() {
+        this.statusCache.data = null;
+        this.statusCache.lastFetched = null;
+        console.log('🗑️ Blockchain status cache cleared');
+    }
+
+    /**
+     * Check if status cache is valid
+     * @returns {boolean} Cache validity
+     */
+    isStatusCacheValid() {
+        if (!this.statusCache.data || !this.statusCache.lastFetched) {
+            return false;
+        }
+        const now = Date.now();
+        return (now - this.statusCache.lastFetched) < this.statusCache.cacheTimeout;
+    }
+
+    /**
      * Check if blockchain is available
      * @returns {Promise<boolean>} Availability status
      */
     async isBlockchainAvailable() {
         try {
             const status = await this.getBlockchainStatus();
-            return status.success && status.data.isConnected;
+            console.log('🔍 Checking blockchain availability:', status);
+            
+            // Handle both object and boolean isConnected formats
+            const isConnected = status.success && (
+                status.data.isConnected === true || 
+                (typeof status.data.isConnected === 'object' && status.data.isConnected !== null)
+            );
+            
+            console.log('✅ Blockchain available:', isConnected);
+            return isConnected;
         } catch (error) {
+            console.log('❌ Blockchain availability check failed:', error);
             return false;
         }
     }

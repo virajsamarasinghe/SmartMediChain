@@ -1,8 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { blockchainService } from '../services/blockchainService';
-import Loading from './common/Loading';
 import Card from './common/Card';
+import Loading from './common/Loading';
 
 const BlockchainValidation = () => {
     const [searchParams] = useSearchParams();
@@ -56,7 +56,7 @@ const BlockchainValidation = () => {
             alert('Please enter an order ID to validate');
             return;
         }
-
+        
         setLoading(true);
         try {
             const result = await blockchainService.getOrderFromBlockchain(idToValidate);
@@ -148,6 +148,20 @@ const BlockchainValidation = () => {
             {/* Validation Form */}
             <Card>
                 <h3 className="text-lg font-semibold mb-4">Validate Medicine Authenticity</h3>
+                
+                {/* Helper Text */}
+                <div className="mb-4 p-3 bg-blue-50 rounded-md">
+                    <h4 className="font-medium text-blue-800 mb-2">📋 How to Use:</h4>
+                    <ol className="text-sm text-blue-700 space-y-1">
+                        <li>1. Create a blockchain order in "Place Order" page</li>
+                        <li>2. Copy the blockchain order ID from the success message</li>
+                        <li>3. Paste it below to validate authenticity</li>
+                    </ol>
+                    <p className="text-xs text-blue-600 mt-2">
+                        💡 Tip: Blockchain order IDs are numeric (e.g., "1", "2", "3")
+                    </p>
+                </div>
+                
                 <div className="flex gap-4">
                     <input
                         type="text"
@@ -169,6 +183,29 @@ const BlockchainValidation = () => {
                     <p className="text-yellow-600 text-sm mt-2">
                         ⚠️ Blockchain service is not available. Please check the connection.
                     </p>
+                )}
+                
+                {/* No Orders Help */}
+                {validationData && validationData.status === 'NOT_FOUND' && (
+                    <div className="mt-4 p-3 bg-orange-50 border-l-4 border-orange-400 rounded">
+                        <h4 className="font-medium text-orange-800 mb-2">🔍 Order Not Found on Blockchain</h4>
+                        <p className="text-sm text-orange-700 mb-3">
+                            This likely means no blockchain orders have been created yet. To create blockchain orders:
+                        </p>
+                        <ol className="text-sm text-orange-700 space-y-1 mb-3">
+                            <li>1. Go to <strong>"Place Order"</strong> page</li>
+                            <li>2. Fill in medicine details (any medicine)</li>
+                            <li>3. Submit the order - it will automatically use blockchain</li>
+                            <li>4. Look for the <strong>blockchain order ID</strong> in the success message</li>
+                            <li>5. Return here and validate using that ID</li>
+                        </ol>
+                        <a 
+                            href="/place-order" 
+                            className="inline-block px-3 py-1 bg-orange-600 text-white text-sm rounded hover:bg-orange-700"
+                        >
+                            Go to Place Order →
+                        </a>
+                    </div>
                 )}
             </Card>
 

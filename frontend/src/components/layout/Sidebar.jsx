@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import { useContext } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { AuthContext } from '../../context/AuthContext';
 
@@ -39,22 +39,24 @@ const Sidebar = ({ isOpen }) => {
                         </Link>
                     </li>
 
-                    {/* Show medicines management to all users */}
-                    <li>
-                        <Link 
-                            to="/medicine-management" 
-                            className={`flex items-center py-3 px-4 rounded-lg transition-all duration-300 hover:transform hover:scale-105 ${
-                                location.pathname === '/medicine-management'
-                                    ? 'bg-blue-800 text-white shadow-lg border-l-4 border-blue-300' 
-                                    : 'text-blue-100 hover:bg-blue-600 hover:text-white hover:shadow-md'
-                            }`}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
-                            </svg>
-                            Medicines
-                        </Link>
-                    </li>
+                    {/* Show medicines management only to non-manager roles */}
+                    {!isApprovalManager && (
+                        <li>
+                            <Link 
+                                to="/medicine-management" 
+                                className={`flex items-center py-3 px-4 rounded-lg transition-all duration-300 hover:transform hover:scale-105 ${
+                                    location.pathname === '/medicine-management'
+                                        ? 'bg-blue-800 text-white shadow-lg border-l-4 border-blue-300' 
+                                        : 'text-blue-100 hover:bg-blue-600 hover:text-white hover:shadow-md'
+                                }`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+                                </svg>
+                                Medicines
+                            </Link>
+                        </li>
+                    )}
 
                     {/* Only show order medicines if not an approval manager */}
                     {!isApprovalManager && (
@@ -75,22 +77,24 @@ const Sidebar = ({ isOpen }) => {
                         </li>
                     )}
 
-                    {/* Blockchain Validation - Show to all users */}
-                    <li>
-                        <Link 
-                            to="/blockchain-validation" 
-                            className={`flex items-center py-3 px-4 rounded-lg transition-all duration-300 hover:transform hover:scale-105 ${
-                                location.pathname === '/blockchain-validation'
-                                    ? 'bg-blue-800 text-white shadow-lg border-l-4 border-blue-300' 
-                                    : 'text-blue-100 hover:bg-blue-600 hover:text-white hover:shadow-md'
-                            }`}
-                        >
-                            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
-                            </svg>
-                            Verify Blockchain
-                        </Link>
-                    </li>
+                    {/* Blockchain Validation - Show only to non-manager roles */}
+                    {!isApprovalManager && (
+                        <li>
+                            <Link 
+                                to="/blockchain-validation" 
+                                className={`flex items-center py-3 px-4 rounded-lg transition-all duration-300 hover:transform hover:scale-105 ${
+                                    location.pathname === '/blockchain-validation'
+                                        ? 'bg-blue-800 text-white shadow-lg border-l-4 border-blue-300' 
+                                        : 'text-blue-100 hover:bg-blue-600 hover:text-white hover:shadow-md'
+                                }`}
+                            >
+                                <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 mr-3 transition-transform duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+                                </svg>
+                                Verify Blockchain
+                            </Link>
+                        </li>
+                    )}
 
                     {/* Only show User Management to admin */}
                     {user && user.role === 'admin' && (

@@ -87,9 +87,21 @@ const orderSchema = new mongoose.Schema({
       'delivered',
       'cancelled',
       'returned',
-      'refunded'
+      'refunded',
+      'approved',
+      'rejected'
     ],
     default: 'pending'
+  },
+  approvalStatus: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected'],
+    default: 'pending'
+  },
+  rejectionReason: String,
+  rejectedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
   },
   priority: {
     type: String,
@@ -175,6 +187,7 @@ orderSchema.index({ orderNumber: 1 });
 orderSchema.index({ customer: 1 });
 orderSchema.index({ supplier: 1 });
 orderSchema.index({ status: 1 });
+orderSchema.index({ approvalStatus: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ 'payment.status': 1 });
 

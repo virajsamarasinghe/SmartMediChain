@@ -90,12 +90,21 @@ const { auth } = require('./middleware/auth');
 
 // Import config
 const connectDB = require('./config/database');
+const { swaggerUi, specs } = require('./config/swagger');
+const { autoSeedUsers } = require('./seeds/index');
 
 // Create Express app
 const app = express();
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB and auto-seed users
+connectDB().then(async () => {
+  // Auto-seed default users for all roles if they don't exist
+  try {
+    await autoSeedUsers();
+  } catch (error) {
+    console.error('❌ Auto-seeding failed:', error);
+  }
+});
 
 // Security middleware
 app.use(helmet());
@@ -104,6 +113,7 @@ app.use(helmet());
 app.use(cors({
   origin: [
     'http://localhost:3000',
+    'http://localhost:3001',
     'http://frontend:3000',
     'http://20.36.128.93:3000',
     'http://20.36.128.93:3001',
@@ -113,8 +123,8 @@ app.use(cors({
   ].filter(Boolean),
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
-  exposedHeaders: ['Content-Length', 'X-Total-Count'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin', 'Cache-Control', 'If-None-Match', 'If-Modified-Since'],
+  exposedHeaders: ['Content-Length', 'X-Total-Count', 'ETag', 'Last-Modified', 'Cache-Control'],
   preflightContinue: false,
   optionsSuccessStatus: 204
 }));
@@ -122,9 +132,33 @@ app.use(cors({
 // Rate limiting
 const limiter = rateLimit({
   windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS) || 15 * 60 * 1000, // 15 minutes
-  max: parseInt(process.env.RATE_LIMIT_MAX) || 100 // limit each IP to 100 requests per windowMs
+  max: parseInt(process.env.RATE_LIMIT_MAX) || 1000, // Increased for development
+  skip: (req, res) => {
+    // Skip rate limiting for frequent status checks in development
+    if (process.env.NODE_ENV === 'development') {
+      const skipPaths = [
+        '/api/blockchain/status',
+        '/api/medicines',
+        '/api/orders',
+        '/api/approvals'
+      ];
+      return skipPaths.some(path => req.path.startsWith(path)) && req.method === 'GET';
+    }
+    return false;
+  },
+  standardHeaders: true, // Return rate limit info in the `RateLimit-*` headers
+  legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
+
+// Specific rate limiting for auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 10, // Limit each IP to 10 auth requests per windowMs
+  skipSuccessfulRequests: true, // Don't count successful requests
+});
+
 app.use(limiter);
+app.use('/api/auth', authLimiter);
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));
@@ -172,6 +206,13 @@ app.get('/debug', (req, res) => {
     }
   });
 });
+
+// Swagger Documentation
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(specs, {
+  explorer: true,
+  customCss: '.swagger-ui .topbar { display: none }',
+  customSiteTitle: 'SmartMediChain API Documentation'
+}));
 
 // API Routes - only register if loaded successfully
 if (authRoutes) {

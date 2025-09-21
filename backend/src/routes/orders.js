@@ -4,6 +4,81 @@ const Order = require('../models/Order');
 const Medicine = require('../models/Medicine');
 const { auth, authorize } = require('../middleware/auth');
 
+/**
+ * @swagger
+ * /api/orders:
+ *   get:
+ *     summary: Get all orders
+ *     description: Retrieve orders with filtering and pagination
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: page
+ *         schema:
+ *           type: number
+ *           default: 1
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: number
+ *           default: 10
+ *       - in: query
+ *         name: status
+ *         schema:
+ *           type: string
+ *           enum: [pending, confirmed, shipped, delivered, cancelled]
+ *       - in: query
+ *         name: priority
+ *         schema:
+ *           type: string
+ *           enum: [low, medium, high, critical]
+ *     responses:
+ *       200:
+ *         description: Orders retrieved successfully
+ *   post:
+ *     summary: Create new order
+ *     description: Place a new order for medicines
+ *     tags: [Orders]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - items
+ *               - supplier
+ *             properties:
+ *               items:
+ *                 type: array
+ *                 items:
+ *                   type: object
+ *                   properties:
+ *                     medicine:
+ *                       type: string
+ *                       example: "64a1b2c3d4e5f6789012345"
+ *                     quantity:
+ *                       type: number
+ *                       example: 50
+ *               supplier:
+ *                 type: string
+ *                 example: "64a1b2c3d4e5f6789012346"
+ *               priority:
+ *                 type: string
+ *                 enum: [low, medium, high, critical]
+ *                 example: "medium"
+ *               notes:
+ *                 type: string
+ *                 example: "Urgent delivery required"
+ *     responses:
+ *       201:
+ *         description: Order created successfully
+ */
+
 // @desc    Get all orders
 // @route   GET /api/orders
 // @access  Private
@@ -22,15 +97,21 @@ const getOrders = async (req, res) => {
       dateTo
     } = req.query;
 
+    // Debug logging
+    console.log('Get orders - User:', req.user.id, 'Role:', req.user.role);
+    
     // Build query based on user role
     let query = {};
-    
+
     if (req.user.role !== 'admin') {
       // Non-admin users can only see their own orders
       query.$or = [
         { customer: req.user.id },
         { supplier: req.user.id }
       ];
+      console.log('Non-admin query:', query);
+    } else {
+      console.log('Admin user - showing all orders');
     }
 
     // Add filters
@@ -64,6 +145,9 @@ const getOrders = async (req, res) => {
       .limit(parseInt(limit));
 
     const totalCount = await Order.countDocuments(query);
+    console.log('Orders found:', orders.length, 'Total count:', totalCount);
+    console.log('Query used:', JSON.stringify(query));
+    
     const totalPages = Math.ceil(totalCount / parseInt(limit));
 
     res.json({
@@ -107,9 +191,9 @@ const getOrder = async (req, res) => {
     }
 
     // Check if user has access to this order
-    if (req.user.role !== 'admin' && 
-        order.customer._id.toString() !== req.user.id && 
-        order.supplier._id.toString() !== req.user.id) {
+    if (req.user.role !== 'admin' &&
+      order.customer._id.toString() !== req.user.id &&
+      order.supplier._id.toString() !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to access this order'
@@ -237,7 +321,7 @@ const createOrder = async (req, res) => {
 const updateOrderStatus = async (req, res) => {
   try {
     const { status, note } = req.body;
-    
+
     const order = await Order.findById(req.params.id);
     if (!order) {
       return res.status(404).json({
@@ -247,8 +331,8 @@ const updateOrderStatus = async (req, res) => {
     }
 
     // Check authorization
-    if (req.user.role !== 'admin' && 
-        order.supplier.toString() !== req.user.id) {
+    if (req.user.role !== 'admin' &&
+      order.supplier.toString() !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: 'Not authorized to update this order'
@@ -257,7 +341,7 @@ const updateOrderStatus = async (req, res) => {
 
     // Update status
     order.status = status;
-    
+
     // Add to timeline
     order.timeline.push({
       status,
@@ -298,9 +382,9 @@ const updateOrderStatus = async (req, res) => {
 const cancelOrder = async (req, res) => {
   try {
     const { reason } = req.body;
-    
+
     const order = await Order.findById(req.params.id).populate('items.medicine');
-    
+
     if (!order) {
       return res.status(404).json({
         success: false,
@@ -362,7 +446,7 @@ const cancelOrder = async (req, res) => {
 const deleteOrder = async (req, res) => {
   try {
     const order = await Order.findById(req.params.id);
-    
+
     if (!order) {
       return res.status(404).json({
         success: false,

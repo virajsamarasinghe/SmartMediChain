@@ -2,7 +2,29 @@ const Approval = require('../models/Approval');
 const Order = require('../models/Order');
 const Medicine = require('../models/Medicine');
 const User = require('../models/User');
+const SmartContractService = require('../services/smartContractService');
 const mongoose = require('mongoose');
+
+// Initialize blockchain service
+const smartContractService = new SmartContractService();
+let isBlockchainInitialized = false;
+
+// Initialize blockchain service on startup
+const initializeBlockchain = async () => {
+  if (!isBlockchainInitialized) {
+    try {
+      await smartContractService.initialize();
+      isBlockchainInitialized = true;
+      console.log('Blockchain service initialized in approval controller');
+    } catch (error) {
+      console.error('Failed to initialize blockchain service in approval controller:', error);
+      // Continue without blockchain functionality
+    }
+  }
+};
+
+// Call initialization
+initializeBlockchain();
 
 // @desc    Create a new approval request
 // @route   POST /api/approvals
@@ -31,7 +53,11 @@ const createApproval = async (req, res) => {
     }
     
     const entity = await entityModel.findById(relatedEntity);
+    console.log(`🔍 Looking for ${entityType} with ID: ${relatedEntity}`);
+    console.log(`🔍 Entity found:`, entity ? `✅ Yes (ID: ${entity._id})` : '❌ No');
+    
     if (!entity) {
+      console.error(`❌ ${entityType} not found with ID: ${relatedEntity}`);
       return res.status(404).json({
         success: false,
         message: `${entityType} not found with ID: ${relatedEntity}`
@@ -240,8 +266,104 @@ const approveRequest = async (req, res) => {
       approval.status = 'approved';
       approval.updatedAt = Date.now();
       
-      // TODO: Process the approved request (e.g., update order status, etc.)
-      // This would be implemented based on the specific business logic
+      // Log approval to blockchain
+      let blockchainResult = null;
+      if (isBlockchainInitialized) {
+        try {
+          // Get order details for blockchain logging
+          let blockchainOrderId = null;
+          if (approval.entityType === 'Order' && approval.relatedEntity) {
+            const order = await Order.findById(approval.relatedEntity);
+            if (order && order.metadata && order.metadata.blockchainOrderId) {
+              blockchainOrderId = order.metadata.blockchainOrderId;
+            }
+          }
+
+          if (blockchainOrderId) {
+            const approvalResult = await smartContractService.submitManagerApproval(
+              blockchainOrderId,
+              {
+                approved: true,
+                managerName: req.user.name || req.user.email,
+                role: req.user.role,
+                comments: comments || 'Approved via management system'
+              }
+            );
+
+            if (approvalResult.success) {
+              blockchainResult = {
+                logged: true,
+                transactionHash: approvalResult.transactionHash,
+                blockNumber: approvalResult.blockNumber,
+                gasUsed: approvalResult.gasUsed
+              };
+              console.log(`🔗 Approval logged to blockchain - TX: ${approvalResult.transactionHash}`);
+            } else {
+              blockchainResult = {
+                logged: false,
+                error: approvalResult.error
+              };
+              console.error('❌ Failed to log approval to blockchain:', approvalResult.error);
+            }
+          } else {
+            console.log('⚠️  No blockchain order ID found - skipping blockchain logging');
+          }
+        } catch (blockchainError) {
+          console.error('❌ Blockchain logging error during approval:', blockchainError);
+          blockchainResult = {
+            logged: false,
+            error: blockchainError.message
+          };
+        }
+      }
+
+      // Store blockchain metadata in approval
+      if (blockchainResult) {
+        approval.metadata = approval.metadata || {};
+        approval.metadata.blockchain = blockchainResult;
+      }
+      
+      // Update the related entity status based on approval
+      if (approval.entityType === 'Order' && approval.relatedEntity) {
+        try {
+          const order = await Order.findById(approval.relatedEntity);
+          if (order) {
+            // Update order status to approved
+            order.status = 'approved';
+            order.approvalStatus = 'approved';
+            order.updatedAt = new Date();
+            
+            // Store blockchain metadata in order as well
+            if (blockchainResult) {
+              order.metadata = order.metadata || {};
+              order.metadata.approvalBlockchain = blockchainResult;
+            }
+            
+            await order.save();
+            
+            console.log(`✅ Order ${order._id} status updated to approved after approval completion`);
+          }
+        } catch (orderError) {
+          console.error('❌ Error updating order status after approval:', orderError);
+        }
+      }
+      
+      // Handle other entity types if needed
+      if (approval.entityType === 'Medicine' && approval.relatedEntity) {
+        try {
+          const medicine = await Medicine.findById(approval.relatedEntity);
+          if (medicine) {
+            // Update medicine approval status if needed
+            medicine.approvalStatus = 'approved';
+            medicine.updatedAt = new Date();
+            await medicine.save();
+            
+            console.log(`✅ Medicine ${medicine._id} status updated to approved`);
+          }
+        } catch (medicineError) {
+          console.error('❌ Error updating medicine status after approval:', medicineError);
+        }
+      }
     }
     
     await approval.save();
@@ -323,6 +445,108 @@ const rejectRequest = async (req, res) => {
     approval.requiredApprovals[approvalIndex].approvedBy = req.user._id;
     approval.requiredApprovals[approvalIndex].approvedAt = Date.now();
     approval.updatedAt = Date.now();
+    
+    // Log rejection to blockchain
+    let blockchainResult = null;
+    if (isBlockchainInitialized) {
+      try {
+        // Get order details for blockchain logging
+        let blockchainOrderId = null;
+        if (approval.entityType === 'Order' && approval.relatedEntity) {
+          const order = await Order.findById(approval.relatedEntity);
+          if (order && order.metadata && order.metadata.blockchainOrderId) {
+            blockchainOrderId = order.metadata.blockchainOrderId;
+          }
+        }
+
+        if (blockchainOrderId) {
+          const rejectionResult = await smartContractService.submitManagerApproval(
+            blockchainOrderId,
+            {
+              approved: false,
+              managerName: req.user.name || req.user.email,
+              role: req.user.role,
+              comments: comments
+            }
+          );
+
+          if (rejectionResult.success) {
+            blockchainResult = {
+              logged: true,
+              transactionHash: rejectionResult.transactionHash,
+              blockNumber: rejectionResult.blockNumber,
+              gasUsed: rejectionResult.gasUsed
+            };
+            console.log(`🔗 Rejection logged to blockchain - TX: ${rejectionResult.transactionHash}`);
+          } else {
+            blockchainResult = {
+              logged: false,
+              error: rejectionResult.error
+            };
+            console.error('❌ Failed to log rejection to blockchain:', rejectionResult.error);
+          }
+        } else {
+          console.log('⚠️  No blockchain order ID found - skipping blockchain logging for rejection');
+        }
+      } catch (blockchainError) {
+        console.error('❌ Blockchain logging error during rejection:', blockchainError);
+        blockchainResult = {
+          logged: false,
+          error: blockchainError.message
+        };
+      }
+    }
+
+    // Store blockchain metadata in approval
+    if (blockchainResult) {
+      approval.metadata = approval.metadata || {};
+      approval.metadata.blockchain = blockchainResult;
+    }
+    
+    // Update the related entity status based on rejection
+    if (approval.entityType === 'Order' && approval.relatedEntity) {
+      try {
+        const order = await Order.findById(approval.relatedEntity);
+        if (order) {
+          // Update order status to rejected
+          order.status = 'rejected';
+          order.approvalStatus = 'rejected';
+          order.rejectionReason = comments;
+          order.rejectedBy = req.user._id;
+          order.updatedAt = new Date();
+          
+          // Store blockchain metadata in order as well
+          if (blockchainResult) {
+            order.metadata = order.metadata || {};
+            order.metadata.approvalBlockchain = blockchainResult;
+          }
+          
+          await order.save();
+          
+          console.log(`❌ Order ${order._id} status updated to rejected after approval rejection`);
+        }
+      } catch (orderError) {
+        console.error('❌ Error updating order status after rejection:', orderError);
+      }
+    }
+    
+    // Handle other entity types if needed
+    if (approval.entityType === 'Medicine' && approval.relatedEntity) {
+      try {
+        const medicine = await Medicine.findById(approval.relatedEntity);
+        if (medicine) {
+          // Update medicine approval status if needed
+          medicine.approvalStatus = 'rejected';
+          medicine.rejectionReason = comments;
+          medicine.updatedAt = new Date();
+          await medicine.save();
+          
+          console.log(`❌ Medicine ${medicine._id} status updated to rejected`);
+        }
+      } catch (medicineError) {
+        console.error('❌ Error updating medicine status after rejection:', medicineError);
+      }
+    }
     
     await approval.save();
     
