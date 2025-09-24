@@ -33,7 +33,7 @@ const { auth, authorize } = require('../middleware/auth');
  *         name: priority
  *         schema:
  *           type: string
- *           enum: [low, medium, high, critical]
+ *           enum: [low, medium, high, urgent]
  *     responses:
  *       200:
  *         description: Orders retrieved successfully
@@ -69,7 +69,7 @@ const { auth, authorize } = require('../middleware/auth');
  *                 example: "64a1b2c3d4e5f6789012346"
  *               priority:
  *                 type: string
- *                 enum: [low, medium, high, critical]
+ *                 enum: [low, medium, high, urgent]
  *                 example: "medium"
  *               notes:
  *                 type: string

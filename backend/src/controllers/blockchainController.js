@@ -135,7 +135,7 @@ class BlockchainController {
                     total: quantity * pricePerUnit
                 },
                 status: (orderStatus === 'FLAGGED_FOR_REVIEW' ? 'pending' : 'approved'),
-                priority: aiResult.riskLevel === 'HIGH' || aiResult.riskLevel === 'CRITICAL' ? 'urgent' : 'normal',
+                priority: aiResult.riskLevel === 'HIGH' || aiResult.riskLevel === 'CRITICAL' ? 'urgent' : 'medium',
                 notes: aiResult.isFraud ? 'FRAUD DETECTED by AI model' : 'AI fraud check passed',
                 metadata: {
                     aiDetection: aiResult,
