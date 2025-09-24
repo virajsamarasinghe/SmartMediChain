@@ -242,19 +242,28 @@ const createOrder = async (req, res) => {
         });
       }
 
-      if (medicine.batchInfo.quantity < item.quantity) {
+      // Convert quantity to number to ensure proper calculations
+      const numQuantity = parseInt(item.quantity);
+      if (isNaN(numQuantity) || numQuantity <= 0) {
+        return res.status(400).json({
+          success: false,
+          message: `Invalid quantity for ${medicine.name}`
+        });
+      }
+
+      if (medicine.batchInfo.quantity < numQuantity) {
         return res.status(400).json({
           success: false,
           message: `Insufficient quantity for ${medicine.name}. Available: ${medicine.batchInfo.quantity}`
         });
       }
 
-      const itemTotal = item.quantity * medicine.pricing.sellingPrice;
+      const itemTotal = numQuantity * medicine.pricing.sellingPrice;
       subtotal += itemTotal;
 
       processedItems.push({
         medicine: medicine._id,
-        quantity: item.quantity,
+        quantity: numQuantity,
         unitPrice: medicine.pricing.sellingPrice,
         totalPrice: itemTotal,
         batchNumber: medicine.batchInfo.batchNumber,

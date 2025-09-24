@@ -1,7 +1,11 @@
 /**
  * Blockchain Controller for SmartMediChain
- * Handles blockchain-related API endpoints
- */
+ * Handles blockchain-related API endp                    const orderResult = await this.smartContractService.createOrder(
+                        medicineId,
+                        medicineName,
+                        numQuantity,
+                        numPricePerUnit
+                    ); */
 
 const SmartContractService = require('../services/smartContractService');
 const AIModelService = require('../services/aiModelService');
@@ -50,12 +54,32 @@ class BlockchainController {
                 });
             }
 
+            // Convert to proper types
+            const numQuantity = parseInt(quantity);
+            const numPricePerUnit = parseFloat(pricePerUnit);
+
+            // Validate converted values
+            if (isNaN(numQuantity) || numQuantity <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid quantity value'
+                });
+            }
+
+            if (isNaN(numPricePerUnit) || numPricePerUnit <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid price per unit value'
+                });
+            }
+
             // 1. First, call AI model for fraud detection
             const aiResult = await this.callAIFraudDetection({
                 medicineId,
                 medicineName,
-                quantity,
-                pricePerUnit
+                quantity: numQuantity,
+                pricePerUnit: numPricePerUnit,
+                userId
             });
 
             let blockchainResult = null;
@@ -65,12 +89,12 @@ class BlockchainController {
             if (this.isInitialized) {
                 try {
                     // Place order on blockchain
-                    const orderResult = await this.smartContractService.placeOrder({
+                    const orderResult = await this.smartContractService.createOrder(
                         medicineId,
                         medicineName,
-                        quantity,
-                        pricePerUnit
-                    });
+                        numQuantity,
+                        numPricePerUnit
+                    );
 
                     if (orderResult.success) {
                         blockchainOrderId = orderResult.orderId;
@@ -125,14 +149,14 @@ class BlockchainController {
                 supplier: userId, // For now, using same user as both customer and supplier
                 items: [{
                     medicine: medicineId,
-                    quantity: quantity,
-                    unitPrice: pricePerUnit,
-                    totalPrice: quantity * pricePerUnit
+                    quantity: numQuantity,
+                    unitPrice: numPricePerUnit,
+                    totalPrice: numQuantity * numPricePerUnit
                 }],
                 pricing: {
-                    subtotal: quantity * pricePerUnit,
+                    subtotal: numQuantity * numPricePerUnit,
                     tax: 0,
-                    total: quantity * pricePerUnit
+                    total: numQuantity * numPricePerUnit
                 },
                 status: (orderStatus === 'FLAGGED_FOR_REVIEW' ? 'pending' : 'approved'),
                 priority: aiResult.riskLevel === 'HIGH' || aiResult.riskLevel === 'CRITICAL' ? 'urgent' : 'medium',
@@ -177,9 +201,9 @@ class BlockchainController {
                 orderNumber: savedOrder.orderNumber,
                 medicineId,
                 medicineName,
-                quantity,
-                pricePerUnit,
-                totalPrice: quantity * pricePerUnit,
+                quantity: numQuantity,
+                pricePerUnit: numPricePerUnit,
+                totalPrice: numQuantity * numPricePerUnit,
                 userId,
                 status: orderStatus,
                 aiDetection: aiResult,
