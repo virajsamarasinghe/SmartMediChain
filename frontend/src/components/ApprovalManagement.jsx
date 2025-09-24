@@ -323,7 +323,10 @@ const ApprovalManagement = () => {
                           Qty: {approval.requestDetails?.quantity || 'N/A'}
                         </div>
                         <div className="text-sm text-gray-600">
-                          Value: ${approval.requestDetails?.totalValue || '0'}
+                          Unit Price: ${approval.requestDetails?.pricePerUnit || '0'}
+                        </div>
+                        <div className="text-sm text-gray-600">
+                          Total: ${approval.requestDetails?.totalValue || '0'}
                         </div>
                       </div>
                       
@@ -453,6 +456,12 @@ const ApprovalManagement = () => {
                       <div>
                         <span className="font-medium text-gray-600">Quantity:</span>
                         <div className="text-gray-900">{selectedApproval.requestDetails.quantity}</div>
+                      </div>
+                    )}
+                    {selectedApproval.requestDetails?.pricePerUnit && (
+                      <div>
+                        <span className="font-medium text-gray-600">Unit Price:</span>
+                        <div className="text-gray-900">${selectedApproval.requestDetails.pricePerUnit}</div>
                       </div>
                     )}
                     {selectedApproval.requestDetails?.totalValue && (

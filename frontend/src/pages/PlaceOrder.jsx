@@ -316,6 +316,7 @@ const PlaceOrder = () => {
                             medicineId: selectedMedicine,
                             medicineName: medicine.name,
                             quantity: quantityNum,
+                            pricePerUnit: medicine.pricing?.sellingPrice || medicine.costPrice || priceNum,
                             totalValue: quantityNum * priceNum,
                             aiRiskLevel: aiResult.riskLevel,
                             fraudDetected: aiResult.isFraud,
