@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useContext, useEffect, useState } from 'react';
+import React, { useContext, useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
 import { API_URL } from '../config';
 import { AuthContext } from '../context/AuthContext';
@@ -13,6 +13,7 @@ const OrderManagement = () => {
     const { user } = useContext(AuthContext);
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [expandedOrders, setExpandedOrders] = useState(new Set());
 
     const fetchOrders = async (page = 1) => {
         try {
@@ -58,6 +59,16 @@ const OrderManagement = () => {
     const handleFilterChange = (e) => {
         const { name, value } = e.target;
         setFilter(prev => ({ ...prev, [name]: value }));
+    };
+
+    const toggleExpandOrder = (orderId) => {
+        const newExpanded = new Set(expandedOrders);
+        if (newExpanded.has(orderId)) {
+            newExpanded.delete(orderId);
+        } else {
+            newExpanded.add(orderId);
+        }
+        setExpandedOrders(newExpanded);
     };
 
     const handleDeleteOrder = async () => {
@@ -137,6 +148,7 @@ const OrderManagement = () => {
                         <table className="min-w-full bg-white border border-gray-200">
                             <thead>
                                 <tr className="bg-gray-50">
+                                    <th className="py-3 px-4 text-left border-b">Details</th>
                                     <th className="py-3 px-4 text-left border-b">Order ID</th>
                                     <th className="py-3 px-4 text-left border-b">Date</th>
                                     <th className="py-3 px-4 text-left border-b">Customer</th>
@@ -149,91 +161,136 @@ const OrderManagement = () => {
                             <tbody>
                                 {orders.length > 0 ? (
                                     orders.map(order => (
-                                        <tr key={order._id} className="hover:bg-gray-50">
-                                            <td className="py-3 px-4 border-b">{order._id}</td>
-                                            <td className="py-3 px-4 border-b">
-                                                {new Date(order.createdAt).toLocaleDateString()}
-                                            </td>
-                                            <td className="py-3 px-4 border-b">
-                                                {order.customer?.name || 'Unknown'}
-                                            </td>
-                                            <td className="py-3 px-4 border-b">
-                                                <span className={`px-2 py-1 rounded-full text-xs ${
-                                                    order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                    order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
-                                                    order.status === 'processing' ? 'bg-purple-100 text-purple-800' :
-                                                    order.status === 'shipped' ? 'bg-indigo-100 text-indigo-800' :
-                                                    order.status === 'delivered' ? 'bg-green-100 text-green-800' :
-                                                    order.status === 'approved' ? 'bg-green-100 text-green-800' :
-                                                    order.status === 'rejected' ? 'bg-red-100 text-red-800' :
-                                                    'bg-gray-100 text-gray-800'
-                                                }`}>
-                                                    {order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
-                                                </span>
-                                            </td>
-                                            <td className="py-3 px-4 border-b">
-                                                <div className="flex items-center gap-2">
+                                        <React.Fragment key={order._id}>
+                                            <tr className="hover:bg-gray-50">
+                                                <td className="py-3 px-4 border-b">
+                                                    <button
+                                                        onClick={() => toggleExpandOrder(order._id)}
+                                                        className="text-blue-600 hover:text-blue-800 focus:outline-none"
+                                                    >
+                                                        {expandedOrders.has(order._id) ? '▼' : '▶'}
+                                                    </button>
+                                                </td>
+                                                <td className="py-3 px-4 border-b">{order._id}</td>
+                                                <td className="py-3 px-4 border-b">
+                                                    {new Date(order.createdAt).toLocaleDateString()}
+                                                </td>
+                                                <td className="py-3 px-4 border-b">
+                                                    {order.customer?.name || 'Unknown'}
+                                                </td>
+                                                <td className="py-3 px-4 border-b">
                                                     <span className={`px-2 py-1 rounded-full text-xs ${
-                                                        order.approvalStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
-                                                        order.approvalStatus === 'approved' ? 'bg-green-100 text-green-800' :
-                                                        order.approvalStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                        order.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                        order.status === 'confirmed' ? 'bg-blue-100 text-blue-800' :
+                                                        order.status === 'processing' ? 'bg-purple-100 text-purple-800' :
+                                                        order.status === 'shipped' ? 'bg-indigo-100 text-indigo-800' :
+                                                        order.status === 'delivered' ? 'bg-green-100 text-green-800' :
+                                                        order.status === 'approved' ? 'bg-green-100 text-green-800' :
+                                                        order.status === 'rejected' ? 'bg-red-100 text-red-800' :
                                                         'bg-gray-100 text-gray-800'
                                                     }`}>
-                                                        {order.approvalStatus ? 
-                                                            order.approvalStatus.charAt(0).toUpperCase() + order.approvalStatus.slice(1) 
-                                                            : 'Pending'
-                                                        }
+                                                        {order.status?.charAt(0).toUpperCase() + order.status?.slice(1)}
                                                     </span>
-                                                    {order.metadata?.approvalBlockchain?.logged && (
-                                                        <span 
-                                                            className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
-                                                            title={`Blockchain verified - TX: ${order.metadata.approvalBlockchain.transactionHash}`}
-                                                        >
-                                                            🔗
+                                                </td>
+                                                <td className="py-3 px-4 border-b">
+                                                    <div className="flex items-center gap-2">
+                                                        <span className={`px-2 py-1 rounded-full text-xs ${
+                                                            order.approvalStatus === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                                                            order.approvalStatus === 'approved' ? 'bg-green-100 text-green-800' :
+                                                            order.approvalStatus === 'rejected' ? 'bg-red-100 text-red-800' :
+                                                            'bg-gray-100 text-gray-800'
+                                                        }`}>
+                                                            {order.approvalStatus ? 
+                                                                order.approvalStatus.charAt(0).toUpperCase() + order.approvalStatus.slice(1) 
+                                                                : 'Pending'
+                                                            }
                                                         </span>
+                                                        {order.metadata?.approvalBlockchain?.logged && (
+                                                            <span 
+                                                                className="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800"
+                                                                title={`Blockchain verified - TX: ${order.metadata.approvalBlockchain.transactionHash}`}
+                                                            >
+                                                                🔗
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    {order.rejectionReason && (
+                                                        <div className="text-xs text-red-600 mt-1">
+                                                            Reason: {order.rejectionReason}
+                                                        </div>
                                                     )}
-                                                </div>
-                                                {order.rejectionReason && (
-                                                    <div className="text-xs text-red-600 mt-1">
-                                                        Reason: {order.rejectionReason}
-                                                    </div>
-                                                )}
-                                                {order.metadata?.approvalBlockchain?.logged && (
-                                                    <div className="text-xs text-blue-600 mt-1">
-                                                        Block #{order.metadata.approvalBlockchain.blockNumber}
-                                                    </div>
-                                                )}
-                                            </td>
-                                            <td className="py-3 px-4 border-b">
-                                                ${order.pricing?.total?.toFixed(2) || '0.00'}
-                                            </td>
-                                            <td className="py-3 px-4 border-b">
-                                                <div className="flex space-x-2">
-                                                    <button 
-                                                        className="text-blue-600 hover:text-blue-800"
-                                                        onClick={() => window.location.href = `/order/${order._id}`}
-                                                    >
-                                                        View
-                                                    </button>
-                                                    
-                                                    {user.role === 'admin' && (
+                                                    {order.metadata?.approvalBlockchain?.logged && (
+                                                        <div className="text-xs text-blue-600 mt-1">
+                                                            Block #{order.metadata.approvalBlockchain.blockNumber}
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td className="py-3 px-4 border-b">
+                                                    ${order.pricing?.total?.toFixed(2) || '0.00'}
+                                                </td>
+                                                <td className="py-3 px-4 border-b">
+                                                    <div className="flex space-x-2">
                                                         <button 
-                                                            className="text-red-600 hover:text-red-800"
-                                                            onClick={() => {
-                                                                setSelectedOrder(order);
-                                                                setShowDeleteModal(true);
-                                                            }}
+                                                            className="text-blue-600 hover:text-blue-800"
+                                                            onClick={() => window.location.href = `/order/${order._id}`}
                                                         >
-                                                            Delete
+                                                            View
                                                         </button>
-                                                    )}
-                                                </div>
-                                            </td>
-                                        </tr>
+                                                        
+                                                        {user.role === 'admin' && (
+                                                            <button 
+                                                                className="text-red-600 hover:text-red-800"
+                                                                onClick={() => {
+                                                                    setSelectedOrder(order);
+                                                                    setShowDeleteModal(true);
+                                                                }}
+                                                            >
+                                                                Delete
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {expandedOrders.has(order._id) && (
+                                                <tr>
+                                                    <td colSpan="8" className="px-4 py-0">
+                                                        <div className="bg-gray-50 p-4 rounded">
+                                                            <h4 className="font-semibold text-sm mb-3">Order Items:</h4>
+                                                            {order.items && order.items.length > 0 ? (
+                                                                <div className="space-y-2">
+                                                                    {order.items.map((item, index) => (
+                                                                        <div key={index} className="flex justify-between items-center bg-white p-3 rounded border">
+                                                                            <div>
+                                                                                <span className="font-medium">
+                                                                                    {item.medicine?.name || 'Unknown Medicine'}
+                                                                                </span>
+                                                                                <span className="text-gray-500 ml-2">
+                                                                                    (Qty: {item.quantity})
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="text-right">
+                                                                                <div className="font-semibold">
+                                                                                    Unit Price: ${item.unitPrice?.toFixed(2) || '0.00'}
+                                                                                </div>
+                                                                                <div className="text-sm text-gray-600">
+                                                                                    Total: ${item.totalPrice?.toFixed(2) || '0.00'}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-gray-500 text-sm">No items found for this order</p>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            )}
+                                        </React.Fragment>
                                     ))
                                 ) : (
                                     <tr>
-                                        <td colSpan="6" className="py-4 px-4 text-center">
+                                        <td colSpan="8" className="py-4 px-4 text-center">
                                             No orders found with the selected filters
                                         </td>
                                     </tr>
