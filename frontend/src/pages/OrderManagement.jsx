@@ -34,6 +34,14 @@ const OrderManagement = () => {
             });
 
             if (response.data.success) {
+                // Debug log the orders data
+                console.log('OrderManagement - Orders received:', response.data.data.orders);
+                if (response.data.data.orders.length > 0) {
+                    console.log('OrderManagement - First order items:', response.data.data.orders[0].items);
+                    if (response.data.data.orders[0].items && response.data.data.orders[0].items.length > 0) {
+                        console.log('OrderManagement - First item:', response.data.data.orders[0].items[0]);
+                    }
+                }
                 setOrders(response.data.data.orders);
                 setTotalPages(response.data.data.pagination.totalPages);
                 setCurrentPage(page);
@@ -258,26 +266,33 @@ const OrderManagement = () => {
                                                             <h4 className="font-semibold text-sm mb-3">Order Items:</h4>
                                                             {order.items && order.items.length > 0 ? (
                                                                 <div className="space-y-2">
-                                                                    {order.items.map((item, index) => (
-                                                                        <div key={index} className="flex justify-between items-center bg-white p-3 rounded border">
-                                                                            <div>
-                                                                                <span className="font-medium">
-                                                                                    {item.medicine?.name || 'Unknown Medicine'}
-                                                                                </span>
-                                                                                <span className="text-gray-500 ml-2">
-                                                                                    (Qty: {item.quantity})
-                                                                                </span>
-                                                                            </div>
-                                                                            <div className="text-right">
-                                                                                <div className="font-semibold">
-                                                                                    Unit Price: ${item.unitPrice?.toFixed(2) || '0.00'}
+                                                                    {order.items.map((item, index) => {
+                                                                        // Debug logging for each item
+                                                                        console.log(`OrderManagement - Item ${index}:`, item);
+                                                                        console.log(`OrderManagement - Item unitPrice:`, item.unitPrice);
+                                                                        console.log(`OrderManagement - Item totalPrice:`, item.totalPrice);
+                                                                        
+                                                                        return (
+                                                                            <div key={index} className="flex justify-between items-center bg-white p-3 rounded border">
+                                                                                <div>
+                                                                                    <span className="font-medium">
+                                                                                        {item.medicine?.name || 'Unknown Medicine'}
+                                                                                    </span>
+                                                                                    <span className="text-gray-500 ml-2">
+                                                                                        (Qty: {item.quantity})
+                                                                                    </span>
                                                                                 </div>
-                                                                                <div className="text-sm text-gray-600">
-                                                                                    Total: ${item.totalPrice?.toFixed(2) || '0.00'}
+                                                                                <div className="text-right">
+                                                                                    <div className="font-semibold">
+                                                                                        Unit Price: ${item.unitPrice?.toFixed(2) || '0.00'}
+                                                                                    </div>
+                                                                                    <div className="text-sm text-gray-600">
+                                                                                        Total: ${item.totalPrice?.toFixed(2) || '0.00'}
+                                                                                    </div>
                                                                                 </div>
                                                                             </div>
-                                                                        </div>
-                                                                    ))}
+                                                                        );
+                                                                    })}
                                                                 </div>
                                                             ) : (
                                                                 <p className="text-gray-500 text-sm">No items found for this order</p>
