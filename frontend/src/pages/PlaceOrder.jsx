@@ -44,19 +44,25 @@ const PlaceOrder = () => {
                     medicineId: order.items[0]?.medicine?._id || order.items[0]?.medicine,
                     medicineName: order.items[0]?.medicine?.name || 'Unknown Medicine',
                     quantity: order.items[0]?.quantity || 0,
-                    pricePerUnit: order.items[0]?.pricePerUnit || 0,
+                    pricePerUnit: order.items[0]?.unitPrice || 0,
                     totalPrice: order.pricing?.total || 0,
-                    status: order.status === 'pending' ? 'PENDING_APPROVAL' : order.status.toUpperCase(),
+                    status: order.status === 'APPROVED' ? 'APPROVED' : 'PENDING_APPROVAL',
                     aiDetection: {
                         isFraud: order.notes?.includes('FRAUD') || false,
                         riskLevel: order.priority === 'urgent' ? 'HIGH' : 'MEDIUM',
                         reasons: order.notes?.includes('FRAUD') ? ['AI fraud detection triggered'] : []
                     },
-                    managementApprovals: managementMembers.map(member => ({
-                        ...member,
-                        approved: null,
-                        timestamp: null
-                    })),
+                    managementApprovals: order.status === 'APPROVED' 
+                        ? managementMembers.map(member => ({
+                            ...member,
+                            approved: true, // Auto-approved by system
+                            timestamp: order.createdAt
+                        }))
+                        : managementMembers.map(member => ({
+                            ...member,
+                            approved: null,
+                            timestamp: null
+                        })),
                     createdAt: order.createdAt,
                     createdBy: order.customer?.name || 'Unknown User'
                 }));
