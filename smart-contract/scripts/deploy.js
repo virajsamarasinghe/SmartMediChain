@@ -28,7 +28,7 @@ async function main() {
     blockNumber: await ethers.provider.getBlockNumber()
   };
 
-  // Create deployment directory if it doesn't exist
+  
   const deploymentDir = path.join(__dirname, "../deployments");
   if (!fs.existsSync(deploymentDir)) {
     fs.mkdirSync(deploymentDir, { recursive: true });
@@ -42,7 +42,7 @@ async function main() {
 
   console.log("Deployment info saved to deployments/SmartMediChainFraudDetection.json");
 
-  // Grant AI_ORACLE_ROLE to the deployer for testing
+ 
   const AI_ORACLE_ROLE = await contract.AI_ORACLE_ROLE();
   await contract.grantRole(AI_ORACLE_ROLE, deployer.address);
   console.log("Granted AI_ORACLE_ROLE to deployer for testing");
@@ -50,7 +50,7 @@ async function main() {
   return contractAddress;
 }
 
-// We recommend this pattern to be able to use async/await everywhere
+
 // and properly handle errors.
 main()
   .then((contractAddress) => {
