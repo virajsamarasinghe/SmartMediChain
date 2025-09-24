@@ -160,7 +160,7 @@ blockchainController.initializeService();
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.post('/place-order', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager'), blockchainController.placeOrderWithFraudDetection);
+router.post('/place-order', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager', 'compliance_manager', 'operations_manager', 'finance_manager', 'senior_manager'), blockchainController.placeOrderWithFraudDetection);
 
 /**
  * @swagger
@@ -269,7 +269,7 @@ router.post('/manager-approval', auth, authorize('operations_manager', 'complian
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/order/:blockchainOrderId', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager'), blockchainController.getOrderFromBlockchain);
+router.get('/order/:blockchainOrderId', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager', 'compliance_manager', 'operations_manager', 'finance_manager', 'senior_manager'), blockchainController.getOrderFromBlockchain);
 
 /**
  * @swagger
@@ -300,6 +300,6 @@ router.get('/order/:blockchainOrderId', auth, authorize('admin', 'supplier', 'ho
  *             schema:
  *               $ref: '#/components/schemas/Error'
  */
-router.get('/status', blockchainStatusLimiter, auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager'), blockchainController.getBlockchainStatus);
+router.get('/status', blockchainStatusLimiter, auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager', 'compliance_manager', 'operations_manager', 'finance_manager', 'senior_manager'), blockchainController.getBlockchainStatus);
 
 module.exports = router;

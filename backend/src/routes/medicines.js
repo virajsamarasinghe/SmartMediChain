@@ -240,25 +240,25 @@ const { auth, authorize } = require('../middleware/auth');
  *         description: Medicine not found
  */
 
-// Get all medicines (restricted to non-manager roles)
-router.get('/', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager'), getMedicines);
+// Get all medicines (accessible to authorized roles including managers)
+router.get('/', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager', 'compliance_manager', 'operations_manager', 'finance_manager', 'senior_manager'), getMedicines);
 
-// Get categories (restricted to non-manager roles)
-router.get('/categories', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager'), getCategories);
+// Get categories (accessible to authorized roles including managers)
+router.get('/categories', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager', 'compliance_manager', 'operations_manager', 'finance_manager', 'senior_manager'), getCategories);
 
-// Search by batch number (restricted to non-manager roles)
-router.get('/batch/:batchNumber', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager'), getMedicineByBatch);
+// Search by batch number (accessible to authorized roles including managers)
+router.get('/batch/:batchNumber', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager', 'compliance_manager', 'operations_manager', 'finance_manager', 'senior_manager'), getMedicineByBatch);
 
-// Get single medicine (restricted to non-manager roles)
-router.get('/:id', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager'), getMedicine);
+// Get single medicine (accessible to authorized roles including managers)
+router.get('/:id', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager', 'compliance_manager', 'operations_manager', 'finance_manager', 'senior_manager'), getMedicine);
 
 // Create medicine (only suppliers and admins)
 router.post('/', auth, authorize('admin', 'supplier'), createMedicine);
 
-// Update medicine (restricted to non-manager roles)
-router.put('/:id', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager'), updateMedicine);
+// Update medicine (accessible to authorized roles including some managers)
+router.put('/:id', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager', 'compliance_manager', 'operations_manager', 'senior_manager'), updateMedicine);
 
-// Delete medicine (restricted to non-manager roles)
-router.delete('/:id', auth, authorize('admin', 'supplier', 'hospital', 'pharmacy_stock_manager', 'pharmacy_order_manager'), deleteMedicine);
+// Delete medicine (restricted to admin, supplier and senior management)
+router.delete('/:id', auth, authorize('admin', 'supplier', 'senior_manager'), deleteMedicine);
 
 module.exports = router;
