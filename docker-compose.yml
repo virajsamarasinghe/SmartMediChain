@@ -11,6 +11,11 @@ services:
       - mongo_data:/data/db
     networks:
       - smc-net
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   backend:
     build:
@@ -40,8 +45,10 @@ services:
       - BLOCKCHAIN_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
       - LOG_LEVEL=info
     depends_on:
-      - mongo
-      - smart-contract
+      mongo:
+        condition: service_healthy
+      smart-contract:
+        condition: service_started
     volumes:
       - smart_contract_artifacts:/app/smart-contract/artifacts
     networks:
