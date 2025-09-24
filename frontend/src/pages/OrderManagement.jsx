@@ -37,13 +37,6 @@ const OrderManagement = () => {
                 setOrders(response.data.data.orders);
                 setTotalPages(response.data.data.pagination.totalPages);
                 setCurrentPage(page);
-                
-                // Debug logging to understand the order data structure
-                console.log('🔍 Debug: Orders received:', response.data.data.orders);
-                if (response.data.data.orders.length > 0) {
-                    console.log('🔍 Debug: First order structure:', response.data.data.orders[0]);
-                    console.log('🔍 Debug: First order items:', response.data.data.orders[0].items);
-                }
             }
         } catch (error) {
             console.error('Error fetching orders:', error);
@@ -263,32 +256,28 @@ const OrderManagement = () => {
                                                     <td colSpan="8" className="px-4 py-0">
                                                         <div className="bg-gray-50 p-4 rounded">
                                                             <h4 className="font-semibold text-sm mb-3">Order Items:</h4>
-                                                            {console.log('🔍 Debug: Order items for', order._id, ':', order.items)}
                                                             {order.items && order.items.length > 0 ? (
                                                                 <div className="space-y-2">
-                                                                    {order.items.map((item, index) => {
-                                                                        console.log('🔍 Debug: Item', index, ':', item);
-                                                                        return (
-                                                                            <div key={index} className="flex justify-between items-center bg-white p-3 rounded border">
-                                                                                <div>
-                                                                                    <span className="font-medium">
-                                                                                        {item.medicine?.name || 'Unknown Medicine'}
-                                                                                    </span>
-                                                                                    <span className="text-gray-500 ml-2">
-                                                                                        (Qty: {item.quantity})
-                                                                                    </span>
+                                                                    {order.items.map((item, index) => (
+                                                                        <div key={index} className="flex justify-between items-center bg-white p-3 rounded border">
+                                                                            <div>
+                                                                                <span className="font-medium">
+                                                                                    {item.medicine?.name || 'Unknown Medicine'}
+                                                                                </span>
+                                                                                <span className="text-gray-500 ml-2">
+                                                                                    (Qty: {item.quantity})
+                                                                                </span>
+                                                                            </div>
+                                                                            <div className="text-right">
+                                                                                <div className="font-semibold">
+                                                                                    Unit Price: ${item.unitPrice?.toFixed(2) || '0.00'}
                                                                                 </div>
-                                                                                <div className="text-right">
-                                                                                    <div className="font-semibold">
-                                                                                        Unit Price: ${item.unitPrice?.toFixed(2) || '0.00'}
-                                                                                    </div>
-                                                                                    <div className="text-sm text-gray-600">
-                                                                                        Total: ${item.totalPrice?.toFixed(2) || '0.00'}
-                                                                                    </div>
+                                                                                <div className="text-sm text-gray-600">
+                                                                                    Total: ${item.totalPrice?.toFixed(2) || '0.00'}
                                                                                 </div>
                                                                             </div>
-                                                                        );
-                                                                    })}
+                                                                        </div>
+                                                                    ))}
                                                                 </div>
                                                             ) : (
                                                                 <p className="text-gray-500 text-sm">No items found for this order</p>
