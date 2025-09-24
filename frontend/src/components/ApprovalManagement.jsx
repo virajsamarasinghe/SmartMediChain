@@ -133,6 +133,7 @@ const ApprovalManagement = () => {
   
   const canCancel = (approval) => {
     if (user.role === 'admin') return false;
+    if (!approval.requestedBy || !approval.requestedBy._id) return false;
     return user._id === approval.requestedBy._id && approval.status === 'pending';
   };
   

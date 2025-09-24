@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import { createContext, useContext, useEffect, useState } from 'react';
 import { getAllApprovals } from '../services/approvalService';
 import { useAuth } from './AuthContext';
 
@@ -42,7 +42,7 @@ export const ApprovalProvider = ({ children }) => {
         
         // Filter to only show user's own requests
         const ownRequests = userResponse.data.approvals?.filter(
-          approval => approval.requestedBy._id === user._id
+          approval => approval.requestedBy && approval.requestedBy._id === user._id
         ) || [];
         
         setUserRequests(ownRequests);
