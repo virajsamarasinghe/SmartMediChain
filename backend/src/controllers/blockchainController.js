@@ -1,11 +1,7 @@
 /**
  * Blockchain Controller for SmartMediChain
- * Handles blockchain-related API endp                    const orderResult = await this.smartContractService.createOrder(
-                        medicineId,
-                        medicineName,
-                        numQuantity,
-                        numPricePerUnit
-                    ); */
+ * Handles blockchain-related API endpoints
+ */
 
 const SmartContractService = require('../services/smartContractService');
 const AIModelService = require('../services/aiModelService');
@@ -89,12 +85,12 @@ class BlockchainController {
             if (this.isInitialized) {
                 try {
                     // Place order on blockchain
-                    const orderResult = await this.smartContractService.createOrder(
+                    const orderResult = await this.smartContractService.placeOrder({
                         medicineId,
                         medicineName,
-                        numQuantity,
-                        numPricePerUnit
-                    );
+                        quantity: numQuantity,
+                        pricePerUnit: numPricePerUnit
+                    });
 
                     if (orderResult.success) {
                         blockchainOrderId = orderResult.orderId;
