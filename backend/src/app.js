@@ -119,6 +119,10 @@ app.use(cors({
     'http://20.36.128.93:3001',
     'https://20.36.128.93:3000',
     'https://20.36.128.93:3001',
+    'http://135.235.193.242:3000',
+    'http://135.235.193.242:3001',
+    'https://135.235.193.242:3000',
+    'https://135.235.193.242:3001',
     process.env.CORS_ORIGIN
   ].filter(Boolean),
   credentials: true,
@@ -128,6 +132,12 @@ app.use(cors({
   preflightContinue: false,
   optionsSuccessStatus: 204
 }));
+
+// Add Private Network Access (PNA) headers for requests from public IPs to localhost
+app.use((req, res, next) => {
+  res.setHeader('Access-Control-Allow-Private-Network', 'true');
+  next();
+});
 
 // Rate limiting
 const limiter = rateLimit({
