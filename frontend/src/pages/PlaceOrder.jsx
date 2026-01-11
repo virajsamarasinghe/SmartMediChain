@@ -9,7 +9,7 @@ import withPageAnimation from '../components/common/withPageAnimation';
 import { API_URL } from '../config';
 import { AuthContext } from '../context/AuthContext';
 import { MedicineContext } from '../context/MedicineContext';
-import { createApproval } from '../services/approvalService';
+import { approveRequest, createApproval, getAllApprovals, rejectRequest } from '../services/approvalService';
 import { blockchainService } from '../services/blockchainService';
 import { orderService } from '../services/orderService';
 
@@ -39,32 +39,85 @@ const PlaceOrder = () => {
             console.log('orderService.getOrders response:', response);
             if (response.success && response.data.orders) {
                 // Transform API orders to match the frontend format
-                const transformedOrders = response.data.orders.map(order => ({
-                    id: order._id,
-                    medicineId: order.items[0]?.medicine?._id || order.items[0]?.medicine,
-                    medicineName: order.items[0]?.medicine?.name || 'Unknown Medicine',
-                    quantity: order.items[0]?.quantity || 0,
-                    pricePerUnit: order.items[0]?.unitPrice || 0,
-                    totalPrice: order.pricing?.total || 0,
-                    status: order.status === 'APPROVED' ? 'APPROVED' : 'PENDING_APPROVAL',
-                    aiDetection: {
-                        isFraud: order.notes?.includes('FRAUD') || false,
-                        riskLevel: order.priority === 'urgent' ? 'HIGH' : 'MEDIUM',
-                        reasons: order.notes?.includes('FRAUD') ? ['AI fraud detection triggered'] : []
-                    },
-                    managementApprovals: order.status === 'APPROVED' 
-                        ? managementMembers.map(member => ({
-                            ...member,
-                            approved: true,
-                            timestamp: order.createdAt
-                        }))
-                        : managementMembers.map(member => ({
+                const transformedOrders = await Promise.all(response.data.orders.map(async (order) => {
+                    // Fetch approvals for this order
+                    let approvalData = [];
+                    try {
+                        const approvalsResponse = await getAllApprovals({ 
+                            relatedEntity: order._id,
+                            entityType: 'Order'
+                        });
+                        
+                        if (approvalsResponse.success && approvalsResponse.data.approvals.length > 0) {
+                            const approval = approvalsResponse.data.approvals[0]; // Get the first approval record
+                            // Transform approval data to management approvals format
+                            approvalData = approval.requiredApprovals.map(req => {
+                                // Determine approval status:
+                                // - isApproved=true → approved
+                                // - isApproved=false AND approvedBy exists → rejected
+                                // - isApproved=false AND no approvedBy → pending (null)
+                                let approvedStatus = null;
+                                if (req.isApproved === true) {
+                                    approvedStatus = true;
+                                } else if (req.isApproved === false && req.approvedBy) {
+                                    approvedStatus = false;  // Explicitly rejected
+                                } // else stays null (pending)
+                                
+                                return {
+                                    id: req._id,
+                                    name: req.approvedBy?.name || req.role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                                    role: req.role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                                    approved: approvedStatus,
+                                    timestamp: req.approvedAt || null,
+                                    comments: req.comments || null
+                                };
+                            });
+                        }
+                    } catch (error) {
+                        console.error('Failed to fetch approvals for order:', order._id, error);
+                    }
+
+                    // If no approvals found, use default structure
+                    if (approvalData.length === 0) {
+                        approvalData = managementMembers.map(member => ({
                             ...member,
                             approved: null,
                             timestamp: null
-                        })),
-                    createdAt: order.createdAt,
-                    createdBy: order.customer?.name || 'Unknown User'
+                        }));
+                    }
+
+                    // Determine order status based on approvals ONLY
+                    let orderStatus = 'PENDING_APPROVAL';
+                    const approvedCount = approvalData.filter(a => a.approved === true).length;
+                    const rejectedCount = approvalData.filter(a => a.approved === false).length;
+                    const requiredApprovals = 3;
+                    
+                    // Only mark as APPROVED when all 3 required approvals are completed
+                    if (approvedCount >= requiredApprovals) {
+                        orderStatus = 'APPROVED';
+                    } else if (rejectedCount > 0) {
+                        // If any manager rejected, mark as REJECTED
+                        orderStatus = 'REJECTED';
+                    }
+                    // Otherwise stays as PENDING_APPROVAL
+
+                    return {
+                        id: order._id,
+                        medicineId: order.items[0]?.medicine?._id || order.items[0]?.medicine,
+                        medicineName: order.items[0]?.medicine?.name || 'Unknown Medicine',
+                        quantity: order.items[0]?.quantity || 0,
+                        pricePerUnit: order.items[0]?.unitPrice || 0,
+                        totalPrice: order.pricing?.total || 0,
+                        status: orderStatus,
+                        aiDetection: {
+                            isFraud: order.notes?.includes('FRAUD') || false,
+                            riskLevel: order.priority === 'urgent' ? 'HIGH' : 'MEDIUM',
+                            reasons: order.notes?.includes('FRAUD') ? ['AI fraud detection triggered'] : []
+                        },
+                        managementApprovals: approvalData,
+                        createdAt: order.createdAt,
+                        createdBy: order.customer?.name || 'Unknown User'
+                    };
                 }));
                 setOrders(transformedOrders);
                 console.log('Orders loaded:', transformedOrders.length);
@@ -418,72 +471,36 @@ const PlaceOrder = () => {
                 return;
             }
 
-            // Get manager details
-            const manager = managementMembers.find(m => m.id === managerId);
-            if (!manager) {
-                toast.error('Manager not found');
+            // Fetch the approval record for this order
+            const approvalsResponse = await getAllApprovals({ 
+                relatedEntity: orderId,
+                entityType: 'Order'
+            });
+
+            if (!approvalsResponse.success || approvalsResponse.data.approvals.length === 0) {
+                toast.error('No approval record found for this order');
                 return;
             }
 
-            // Submit approval through the approval API
-            const approvalData = {
-                orderId: order.id,
-                blockchainOrderId: order.blockchain?.blockchainOrderId,
-                approved: approved,
-                managerName: manager.name,
-                role: manager.role,
-                comments: approved ? 'Approved by management' : 'Rejected by management'
-            };
+            const approvalRecord = approvalsResponse.data.approvals[0];
+            const comments = approved ? 'Approved via order management' : 'Rejected via order management';
 
-            // Try to submit via blockchain approval if available
-            try {
-                const response = await axios.post(`${API_URL}/blockchain/manager-approval`, approvalData, {
-                    headers: {
-                        Authorization: `Bearer ${localStorage.getItem('token')}`,
-                        'Content-Type': 'application/json'
-                    }
-                });
-
-                if (response.data.success) {
-                    toast.success(`Order ${approved ? 'approved' : 'rejected'} successfully`);
-                    
-                    // Refresh orders from API to get updated status
-                    await loadOrdersFromAPI();
-                } else {
-                    throw new Error(response.data.message || 'Approval submission failed');
-                }
-            } catch (blockchainError) {
-                console.warn('Blockchain approval failed, using fallback:', blockchainError);
-                
-                // Fallback to regular approval API
-                try {
-                    const fallbackData = {
-                        status: approved ? 'approved' : 'rejected',
-                        note: `${approved ? 'Approved' : 'Rejected'} by ${manager.name} (${manager.role})`
-                    };
-
-                    const response = await axios.put(`${API_URL}/orders/${order.id}/status`, fallbackData, {
-                        headers: {
-                            Authorization: `Bearer ${localStorage.getItem('token')}`,
-                            'Content-Type': 'application/json'
-                        }
-                    });
-
-                    if (response.data.success) {
-                        toast.success(`Order ${approved ? 'approved' : 'rejected'} successfully`);
-                        await loadOrdersFromAPI();
-                    } else {
-                        throw new Error(response.data.message || 'Status update failed');
-                    }
-                } catch (fallbackError) {
-                    console.error('Both blockchain and fallback approval failed:', fallbackError);
-                    toast.error('Failed to process approval. Please try again.');
-                }
+            // Call the appropriate approval API
+            if (approved) {
+                await approveRequest(approvalRecord._id, comments);
+                toast.success('Order approved successfully');
+            } else {
+                await rejectRequest(approvalRecord._id, comments);
+                toast.success('Order rejected successfully');
             }
+            
+            // Refresh orders from API to get updated status
+            await loadOrdersFromAPI(true);
 
         } catch (error) {
             console.error('Approval update error:', error);
-            toast.error(error.message || 'Failed to update approval. Please try again.');
+            const errorMessage = error.message || 'Failed to update approval. Please try again.';
+            toast.error(errorMessage);
         } finally {
             setSubmitting(false);
         }

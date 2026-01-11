@@ -16,6 +16,32 @@ class BlockchainService {
             cacheTimeout: 10000 // 10 seconds
         };
     }
+
+    /**
+     * Get all blockchain orders
+     * @returns {Promise<Object>} API response
+     */
+    async getAllBlockchainOrders() {
+        try {
+            console.log('🔍 BlockchainService: Fetching all blockchain orders...');
+            const token = authService.getToken();
+            const response = await fetch(`${API_BASE_URL}/api/blockchain/orders`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+            const data = await response.json();
+            console.log('📦 BlockchainService: Response:', data);
+            if (!response.ok) {
+                throw new Error(data.message || 'Failed to get blockchain orders');
+            }
+            return data;
+        } catch (error) {
+            console.error('❌ BlockchainService: Error getting all blockchain orders:', error);
+            throw error;
+        }
+    }
     /**
      * Place order with fraud detection and blockchain logging
      * @param {Object} orderData - Order data
@@ -114,12 +140,12 @@ class BlockchainService {
     async getBlockchainStatus() {
         try {
             const now = Date.now();
-            
+
             // Check if we have cached data that's still valid
-            if (this.statusCache.data && 
-                this.statusCache.lastFetched && 
+            if (this.statusCache.data &&
+                this.statusCache.lastFetched &&
                 (now - this.statusCache.lastFetched) < this.statusCache.cacheTimeout) {
-                
+
                 console.log('🔄 Using cached blockchain status');
                 return this.statusCache.data;
             }
@@ -143,7 +169,7 @@ class BlockchainService {
             // Cache the response
             this.statusCache.data = data;
             this.statusCache.lastFetched = now;
-            
+
             console.log('📡 Fetched fresh blockchain status');
             return data;
         } catch (error) {
@@ -244,13 +270,13 @@ class BlockchainService {
         try {
             const status = await this.getBlockchainStatus();
             console.log('🔍 Checking blockchain availability:', status);
-            
+
             // Handle both object and boolean isConnected formats
             const isConnected = status.success && (
-                status.data.isConnected === true || 
+                status.data.isConnected === true ||
                 (typeof status.data.isConnected === 'object' && status.data.isConnected !== null)
             );
-            
+
             console.log('✅ Blockchain available:', isConnected);
             return isConnected;
         } catch (error) {

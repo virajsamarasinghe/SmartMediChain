@@ -190,6 +190,20 @@ class SmartContractService {
                     ],
                     "stateMutability": "view",
                     "type": "function"
+                },
+                {
+                    "inputs": [],
+                    "name": "orderCount",
+                    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+                    "stateMutability": "view",
+                    "type": "function"
+                },
+                {
+                    "inputs": [],
+                    "name": "getCurrentOrderId",
+                    "outputs": [{ "internalType": "uint256", "name": "", "type": "uint256" }],
+                    "stateMutability": "view",
+                    "type": "function"
                 }
             ],
             bytecode: "0x" // Empty bytecode since we're connecting to existing contract
@@ -601,6 +615,64 @@ class SmartContractService {
      */
     getContractAddress() {
         return this.contractAddress;
+    }
+
+    /**
+     * Get total order count from blockchain
+     * @returns {Promise<number>} Total order count
+     */
+    async getOrderCount() {
+        this.ensureInitialized();
+        try {
+            console.log('📊 Getting order count from blockchain...');
+            if (typeof this.contract.getCurrentOrderId === 'function') {
+                const count = await this.contract.getCurrentOrderId();
+                console.log('📊 getCurrentOrderId returned:', count.toString());
+                return Number(count);
+            } else if (typeof this.contract.orderCount === 'function') {
+                const count = await this.contract.orderCount();
+                console.log('📊 orderCount returned:', count.toString());
+                return Number(count);
+            }
+            console.log('⚠️ No order count function found on contract');
+            return 0;
+        } catch (error) {
+            console.error('❌ Failed to get order count:', error);
+            return 0;
+        }
+    }
+
+    /**
+     * Get all orders from blockchain
+     * @returns {Promise<Array>} Array of orders
+     */
+    async getAllOrders() {
+        this.ensureInitialized();
+        try {
+            const orderCount = await this.getOrderCount();
+            console.log(`📦 Total orders on blockchain: ${orderCount}`);
+            const orders = [];
+
+            for (let i = 1; i <= orderCount; i++) {
+                try {
+                    console.log(`🔍 Fetching order ${i}...`);
+                    const orderResult = await this.getOrder(i);
+                    if (orderResult.success && orderResult.order) {
+                        console.log(`✅ Order ${i} retrieved:`, orderResult.order.medicineName);
+                        orders.push(orderResult.order);
+                    }
+                } catch (err) {
+                    // Order might be inactive, skip it
+                    console.log(`⏭️ Skipping order ${i}: ${err.message}`);
+                }
+            }
+
+            console.log(`📦 Retrieved ${orders.length} active orders`);
+            return orders;
+        } catch (error) {
+            console.error('❌ Failed to get all orders from blockchain:', error);
+            return [];
+        }
     }
 }
 

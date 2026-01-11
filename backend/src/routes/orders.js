@@ -3,6 +3,27 @@ const router = express.Router();
 const Order = require('../models/Order');
 const Medicine = require('../models/Medicine');
 const { auth, authorize } = require('../middleware/auth');
+const SmartContractService = require('../services/smartContractService');
+
+// Initialize blockchain service
+const smartContractService = new SmartContractService();
+let isBlockchainInitialized = false;
+
+// Initialize blockchain service on startup
+const initializeBlockchain = async () => {
+  if (!isBlockchainInitialized) {
+    try {
+      await smartContractService.initialize();
+      isBlockchainInitialized = true;
+      console.log('✅ Blockchain service initialized for orders');
+    } catch (error) {
+      console.error('⚠️  Failed to initialize blockchain service for orders:', error.message);
+      // Continue without blockchain functionality
+    }
+  }
+};
+
+initializeBlockchain();
 
 /**
  * @swagger
@@ -302,6 +323,34 @@ const createOrder = async (req, res) => {
         item.medicine,
         { $inc: { 'batchInfo.quantity': -item.quantity } }
       );
+    }
+
+    // Record order on blockchain
+    if (isBlockchainInitialized) {
+      try {
+        const totalQuantity = processedItems.reduce((sum, item) => sum + item.quantity, 0);
+        const firstMedicine = await Medicine.findById(processedItems[0].medicine);
+        
+        const blockchainTx = await smartContractService.placeOrder({
+          medicineId: order._id.toString(),
+          medicineName: firstMedicine.name,
+          quantity: totalQuantity,
+          pricePerUnit: total / totalQuantity
+        });
+
+        // Update order with blockchain transaction details
+        order.blockchain = {
+          transactionHash: blockchainTx.hash,
+          blockNumber: blockchainTx.blockNumber,
+          smartContractAddress: smartContractService.contractAddress
+        };
+        await order.save();
+        
+        console.log(`✅ Order ${order.orderNumber} recorded on blockchain: ${blockchainTx.hash}`);
+      } catch (blockchainError) {
+        console.error('⚠️  Failed to record order on blockchain:', blockchainError.message);
+        // Continue without blockchain - order is still created in database
+      }
     }
 
     // Populate and return order

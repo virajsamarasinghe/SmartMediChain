@@ -173,6 +173,17 @@ const orderSchema = new mongoose.Schema({
     blockNumber: Number,
     smartContractAddress: String
   },
+  metadata: {
+    aiDetection: {
+      type: mongoose.Schema.Types.Mixed
+    },
+    blockchainData: {
+      type: mongoose.Schema.Types.Mixed
+    },
+    blockchainOrderId: {
+      type: Number
+    }
+  },
   createdBy: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'User',
@@ -190,23 +201,24 @@ orderSchema.index({ status: 1 });
 orderSchema.index({ approvalStatus: 1 });
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ 'payment.status': 1 });
+orderSchema.index({ 'metadata.blockchainOrderId': 1 });
 
 // Pre-save middleware to generate order number
-orderSchema.pre('save', async function(next) {
+orderSchema.pre('save', async function (next) {
   if (this.isNew && !this.orderNumber) {
     const date = new Date();
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
     const day = String(date.getDate()).padStart(2, '0');
-    
+
     // Count today's orders to generate sequential number
     const todayStart = new Date(year, date.getMonth(), date.getDate());
     const todayEnd = new Date(year, date.getMonth(), date.getDate() + 1);
-    
+
     const count = await this.constructor.countDocuments({
       createdAt: { $gte: todayStart, $lt: todayEnd }
     });
-    
+
     const orderNum = String(count + 1).padStart(4, '0');
     this.orderNumber = `ORD-${year}${month}${day}-${orderNum}`;
   }
@@ -214,7 +226,7 @@ orderSchema.pre('save', async function(next) {
 });
 
 // Pre-save middleware to update timeline
-orderSchema.pre('save', function(next) {
+orderSchema.pre('save', function (next) {
   if (this.isModified('status') && !this.isNew) {
     this.timeline.push({
       status: this.status,
@@ -226,7 +238,7 @@ orderSchema.pre('save', function(next) {
 });
 
 // Virtual for order age in days
-orderSchema.virtual('orderAge').get(function() {
+orderSchema.virtual('orderAge').get(function () {
   const today = new Date();
   const created = new Date(this.createdAt);
   const diffTime = today - created;
@@ -234,7 +246,7 @@ orderSchema.virtual('orderAge').get(function() {
 });
 
 // Method to calculate total items
-orderSchema.methods.getTotalItems = function() {
+orderSchema.methods.getTotalItems = function () {
   return this.items.reduce((total, item) => total + item.quantity, 0);
 };
 

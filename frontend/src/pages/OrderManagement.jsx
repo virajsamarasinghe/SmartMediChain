@@ -14,6 +14,7 @@ const OrderManagement = () => {
     const [selectedOrder, setSelectedOrder] = useState(null);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [expandedOrders, setExpandedOrders] = useState(new Set());
+    const [lastUpdated, setLastUpdated] = useState(Date.now());
 
     const fetchOrders = async (page = 1) => {
         try {
@@ -58,6 +59,18 @@ const OrderManagement = () => {
         fetchOrders(1);
     }, [filter]);
 
+    // Auto-refresh orders every 10 seconds to catch approval updates
+    useEffect(() => {
+        const interval = setInterval(() => {
+            if (!loading) {
+                fetchOrders(currentPage);
+                setLastUpdated(Date.now());
+            }
+        }, 10000); // Refresh every 10 seconds
+
+        return () => clearInterval(interval);
+    }, [currentPage, loading]);
+
     const handlePageChange = (page) => {
         if (page > 0 && page <= totalPages) {
             fetchOrders(page);
@@ -92,10 +105,27 @@ const OrderManagement = () => {
             if (response.data.success) {
                 toast.success('Order deleted successfully');
                 setShowDeleteModal(false);
-                setSelectedOrder(null);
-                fetchOrders(currentPage);
-            }
-        } catch (error) {
+    const handleManualRefresh = () => {
+        fetchOrders(currentPage);
+        setLastUpdated(Date.now());
+        toast.info('Orders refreshed');
+    };
+
+    return (
+        <div className="p-6">
+            <div className="flex justify-between items-center mb-6">
+                <div>
+                    <h1 className="text-2xl font-bold text-gray-800">Order Management</h1>
+                    <p className="text-sm text-gray-500 mt-1">
+                        Last updated: {new Date(lastUpdated).toLocaleTimeString()} 
+                        <button 
+                            onClick={handleManualRefresh}
+                            className="ml-2 text-blue-600 hover:text-blue-800 underline"
+                        >
+                            Refresh Now
+                        </button>
+                    </p>
+                </div
             console.error('Error deleting order:', error);
             toast.error(
                 error.response?.data?.message || 
