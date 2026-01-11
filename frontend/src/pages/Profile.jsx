@@ -1,26 +1,44 @@
-import React, { useContext, useState } from 'react';
-import { AuthContext } from '../context/AuthContext';
+import { useContext, useState } from 'react';
+import { toast } from 'react-toastify';
 import Button from '../components/common/Button';
-import Input from '../components/common/Input';
 import Card from '../components/common/Card';
+import Input from '../components/common/Input';
+import { AuthContext } from '../context/AuthContext';
+import { userService } from '../services/userService';
 
 const Profile = () => {
     const { user } = useContext(AuthContext);
     const [isEditing, setIsEditing] = useState(false);
     const [profileData, setProfileData] = useState({
-        name: user?.name || 'Test User',
-        email: user?.email || 'test@example.com',
-        phone: '+1 234-567-8900',
-        role: 'Pharmacist',
-        department: 'Pharmacy',
-        joinDate: '2023-01-15'
+        name: user?.name || '',
+        email: user?.email || '',
+        phone: user?.profile?.phone || '',
+        role: user?.role || '',
+        department: user?.organization?.type || '',
+        joinDate: user?.createdAt ? new Date(user.createdAt).toLocaleDateString() : ''
     });
 
-    const handleSave = () => {
-        // Here you would typically save to backend
-        console.log('Saving profile:', profileData);
-        setIsEditing(false);
-        alert('Profile updated successfully!');
+    const handleSave = async () => {
+        try {
+            // Save profile data via API
+            const response = await userService.updateUser(user._id, {
+                name: profileData.name,
+                profile: {
+                    phone: profileData.phone
+                }
+            });
+
+            if (response.success) {
+                toast.success('Profile updated successfully!');
+                setIsEditing(false);
+                // Optionally refresh user context here
+            } else {
+                throw new Error(response.message || 'Failed to update profile');
+            }
+        } catch (error) {
+            console.error('Profile update error:', error);
+            toast.error(error.message || 'Failed to update profile. Please try again.');
+        }
     };
 
     const handleCancel = () => {

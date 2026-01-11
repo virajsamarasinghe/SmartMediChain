@@ -4,11 +4,19 @@
  */
 
 const SmartContractService = require('../services/smartContractService');
+const AIModelService = require('../services/aiModelService');
+const Order = require('../models/Order');
 
 class BlockchainController {
     constructor() {
         this.smartContractService = new SmartContractService();
         this.isInitialized = false;
+        // Add caching for blockchain status
+        this.statusCache = {
+            data: null,
+            lastUpdated: null,
+            cacheTimeout: 10000 // 10 seconds cache
+        };
     }
 
     /**
@@ -42,12 +50,32 @@ class BlockchainController {
                 });
             }
 
+            // Convert to proper types
+            const numQuantity = parseInt(quantity);
+            const numPricePerUnit = parseFloat(pricePerUnit);
+
+            // Validate converted values
+            if (isNaN(numQuantity) || numQuantity <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid quantity value'
+                });
+            }
+
+            if (isNaN(numPricePerUnit) || numPricePerUnit <= 0) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Invalid price per unit value'
+                });
+            }
+
             // 1. First, call AI model for fraud detection
             const aiResult = await this.callAIFraudDetection({
                 medicineId,
                 medicineName,
-                quantity,
-                pricePerUnit
+                quantity: numQuantity,
+                pricePerUnit: numPricePerUnit,
+                userId
             });
 
             let blockchainResult = null;
@@ -60,13 +88,13 @@ class BlockchainController {
                     const orderResult = await this.smartContractService.placeOrder({
                         medicineId,
                         medicineName,
-                        quantity,
-                        pricePerUnit
+                        quantity: numQuantity,
+                        pricePerUnit: numPricePerUnit
                     });
 
                     if (orderResult.success) {
                         blockchainOrderId = orderResult.orderId;
-                        
+
                         // Submit fraud detection result to blockchain
                         const fraudResult = await this.smartContractService.submitFraudDetection(
                             blockchainOrderId,
@@ -107,14 +135,71 @@ class BlockchainController {
                 orderStatus = 'APPROVED';
             }
 
-            // 4. Save to traditional database (mock for now)
+            // 4. Save to traditional database
+            const orderNumber = `BC-${Date.now()}`;
+            
+            const databaseOrder = new Order({
+                orderNumber,
+                orderType: 'purchase',
+                customer: userId,
+                supplier: userId, // For now, using same user as both customer and supplier
+                items: [{
+                    medicine: medicineId,
+                    quantity: numQuantity,
+                    unitPrice: numPricePerUnit,
+                    totalPrice: numQuantity * numPricePerUnit
+                }],
+                pricing: {
+                    subtotal: numQuantity * numPricePerUnit,
+                    tax: 0,
+                    total: numQuantity * numPricePerUnit
+                },
+                status: (orderStatus === 'FLAGGED_FOR_REVIEW' ? 'pending' : 'approved'),
+                priority: aiResult.riskLevel === 'HIGH' || aiResult.riskLevel === 'CRITICAL' ? 'urgent' : 'medium',
+                notes: aiResult.isFraud ? 'FRAUD DETECTED by AI model' : 'AI fraud check passed',
+                metadata: {
+                    aiDetection: aiResult,
+                    blockchainData: blockchainResult,
+                    blockchainOrderId
+                },
+                createdBy: userId
+            });
+
+            let savedOrder;
+            try {
+                savedOrder = await databaseOrder.save();
+                console.log('✅ Order saved to database with ID:', savedOrder._id);
+                
+                // Verify the order was actually saved by querying it back
+                const verifyOrder = await Order.findById(savedOrder._id);
+                if (!verifyOrder) {
+                    console.error('❌ Order verification failed - not found in database after save');
+                    throw new Error('Order was not properly saved to database');
+                } else {
+                    console.log('✅ Order verification successful:', verifyOrder._id);
+                }
+                
+                // Add a small delay to ensure database consistency
+                await new Promise(resolve => setTimeout(resolve, 100));
+                
+            } catch (dbError) {
+                console.error('❌ Failed to save order to database:', dbError);
+                return res.status(500).json({
+                    success: false,
+                    message: 'Failed to save order to database',
+                    error: dbError.message
+                });
+            }
+
             const orderData = {
+                _id: savedOrder._id,
                 id: Date.now().toString(),
+                orderNumber: savedOrder.orderNumber,
                 medicineId,
                 medicineName,
-                quantity,
-                pricePerUnit,
-                totalPrice: quantity * pricePerUnit,
+                quantity: numQuantity,
+                pricePerUnit: numPricePerUnit,
+                totalPrice: numQuantity * numPricePerUnit,
                 userId,
                 status: orderStatus,
                 aiDetection: aiResult,
@@ -226,17 +311,22 @@ class BlockchainController {
     getOrderFromBlockchain = async (req, res) => {
         try {
             const { blockchainOrderId } = req.params;
+            console.log('🔍 Getting order from blockchain with ID:', blockchainOrderId);
 
             if (!this.isInitialized) {
+                console.log('❌ Blockchain service not initialized');
                 return res.status(503).json({
                     success: false,
                     message: 'Blockchain service not available'
                 });
             }
 
+            console.log('📡 Calling smartContractService.getOrder...');
             const orderResult = await this.smartContractService.getOrder(blockchainOrderId);
-            
+            console.log('📊 Order result:', orderResult);
+
             if (!orderResult.success) {
+                console.log('⚠️ Order not found on blockchain');
                 return res.status(404).json({
                     success: false,
                     message: 'Order not found on blockchain',
@@ -245,9 +335,11 @@ class BlockchainController {
             }
 
             // Also get fraud detection result and approvals
+            console.log('🔍 Getting fraud detection and approvals...');
             const fraudResult = await this.smartContractService.getFraudDetectionResult(blockchainOrderId);
             const approvalsResult = await this.smartContractService.getManagerApprovals(blockchainOrderId);
 
+            console.log('✅ Successfully retrieved blockchain order data');
             res.json({
                 success: true,
                 data: {
@@ -272,10 +364,35 @@ class BlockchainController {
      */
     getBlockchainStatus = async (req, res) => {
         try {
+            const now = Date.now();
+            const clientIp = req.ip || req.connection.remoteAddress;
+            
+            // Check if we have cached data that's still valid
+            if (this.statusCache.data && 
+                this.statusCache.lastUpdated && 
+                (now - this.statusCache.lastUpdated) < this.statusCache.cacheTimeout) {
+                
+                // Set cache headers for client-side caching
+                res.set({
+                    'Cache-Control': 'public, max-age=10',
+                    'ETag': `"${this.statusCache.lastUpdated}"`,
+                    'Last-Modified': new Date(this.statusCache.lastUpdated).toUTCString()
+                });
+                
+                console.log(`🔄 [${clientIp}] Served cached blockchain status`);
+                return res.json({
+                    success: true,
+                    data: this.statusCache.data,
+                    cached: true
+                });
+            }
+
+            console.log(`📡 [${clientIp}] Fetching fresh blockchain status`);
             const status = {
                 isConnected: this.smartContractService.isConnected(),
                 contractAddress: this.smartContractService.getContractAddress(),
-                currentBlock: null
+                currentBlock: null,
+                timestamp: now
             };
 
             if (status.isConnected) {
@@ -286,9 +403,22 @@ class BlockchainController {
                 }
             }
 
+            // Cache the status
+            this.statusCache.data = status;
+            this.statusCache.lastUpdated = now;
+
+            // Set cache headers
+            res.set({
+                'Cache-Control': 'public, max-age=10',
+                'ETag': `"${now}"`,
+                'Last-Modified': new Date(now).toUTCString()
+            });
+
+            console.log(`✅ [${clientIp}] Fresh blockchain status served`);
             res.json({
                 success: true,
-                data: status
+                data: status,
+                cached: false
             });
 
         } catch (error) {
@@ -302,36 +432,78 @@ class BlockchainController {
     };
 
     /**
-     * Call AI model for fraud detection
+     * Call AI model for fraud detection using the logistic regression model
      * @param {Object} orderData - Order data for fraud detection
      * @returns {Object} Fraud detection result
      */
     async callAIFraudDetection(orderData) {
         try {
-            // This should call your existing AI model API
-            // For now, I'll implement a mock fraud detection
-            const { quantity, pricePerUnit } = orderData;
-            
+            // Use the real AI model service for fraud detection
+            const aiResult = await AIModelService.analyzeOrderForFraud(orderData);
+
+            console.log('AI fraud detection raw result:', JSON.stringify(aiResult, null, 2));
+
+            if (aiResult.success) {
+                const mappedResult = {
+                    isFraud: aiResult.data.is_fraud,
+                    riskLevel: aiResult.data.risk_level,
+                    reasons: aiResult.data.reasons,
+                    confidenceScore: aiResult.data.confidence_score,
+                    timestamp: new Date().toISOString()
+                };
+
+                console.log('Mapped AI result:', JSON.stringify(mappedResult, null, 2));
+                return mappedResult;
+            } else {
+                // Fallback to basic rule-based detection if AI model fails
+                console.warn('AI fraud detection failed, using fallback logic:', aiResult.error);
+                return this.fallbackFraudDetection(orderData);
+            }
+
+        } catch (error) {
+            console.error('AI fraud detection failed:', error);
+            // Return fallback detection
+            return this.fallbackFraudDetection(orderData);
+        }
+    }
+
+    /**
+     * Fallback fraud detection using basic rules
+     * @param {Object} orderData - Order data for fraud detection
+     * @returns {Object} Fraud detection result
+     */
+    fallbackFraudDetection(orderData) {
+        try {
+            const { quantity, pricePerUnit, maxCapacity = 1000, avgUsagePerDay = 10 } = orderData;
+
             const fraudReasons = [];
             let riskLevel = 'LOW';
             let isFraud = false;
-            
-            // Mock fraud detection logic (replace with actual AI API call)
+
+            // Basic rule-based fraud detection
             const normalPrice = 10; // Mock normal price per unit
             const pricePerUnitNum = parseFloat(pricePerUnit);
-            
+
             if (pricePerUnitNum > normalPrice * 1.5) {
                 fraudReasons.push('Overpricing detected - Price is significantly higher than market rate');
                 riskLevel = 'HIGH';
                 isFraud = true;
             }
-            
-            if (quantity > 1000) {
-                fraudReasons.push('Unusual large quantity order detected');
+
+            if (quantity > maxCapacity) {
+                fraudReasons.push('Order quantity exceeds maximum storage capacity');
+                riskLevel = 'HIGH';
+                isFraud = true;
+            }
+
+            // Check if order is much higher than typical usage (30 days worth)
+            const estimatedNeed = avgUsagePerDay * 30;
+            if (quantity > estimatedNeed * 2) {
+                fraudReasons.push('Order quantity significantly exceeds estimated monthly need');
                 riskLevel = riskLevel === 'HIGH' ? 'HIGH' : 'MEDIUM';
                 isFraud = true;
             }
-            
+
             if (pricePerUnitNum < normalPrice * 0.3) {
                 fraudReasons.push('Suspiciously low pricing detected');
                 riskLevel = riskLevel === 'HIGH' ? 'HIGH' : 'MEDIUM';
@@ -342,17 +514,18 @@ class BlockchainController {
                 isFraud,
                 riskLevel,
                 reasons: fraudReasons,
-                confidenceScore: isFraud ? 85 : 95,
-                timestamp: new Date().toISOString()
+                confidenceScore: isFraud ? 75 : 85,
+                timestamp: new Date().toISOString(),
+                fallback: true
             };
 
         } catch (error) {
-            console.error('AI fraud detection failed:', error);
+            console.error('Fallback fraud detection failed:', error);
             // Return safe default
             return {
                 isFraud: false,
                 riskLevel: 'LOW',
-                reasons: [],
+                reasons: ['Fraud detection system unavailable'],
                 confidenceScore: 50,
                 timestamp: new Date().toISOString(),
                 error: error.message

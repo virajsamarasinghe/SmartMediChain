@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
 
 // Create axios instance with default config
 const apiClient = axios.create({
@@ -132,7 +132,7 @@ export const aiService = {
   async getInventoryAlerts() {
     try {
       const response = await this.getReorderSuggestions();
-      
+
       // Transform suggestions into alerts format
       if (response.success && response.data.suggestions) {
         const alerts = response.data.suggestions.map(suggestion => ({

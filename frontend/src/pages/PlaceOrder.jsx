@@ -1,11 +1,17 @@
-import React, { useState, useEffect, useContext } from 'react';
-import { MedicineContext } from '../context/MedicineContext';
-import { AuthContext } from '../context/AuthContext';
+import axios from 'axios';
+import { useContext, useEffect, useState } from 'react';
+import { toast } from 'react-toastify';
 import Button from '../components/common/Button';
-import Input from '../components/common/Input';
 import Card from '../components/common/Card';
+import Input from '../components/common/Input';
 import Loading from '../components/common/Loading';
 import withPageAnimation from '../components/common/withPageAnimation';
+import { API_URL } from '../config';
+import { AuthContext } from '../context/AuthContext';
+import { MedicineContext } from '../context/MedicineContext';
+import { createApproval } from '../services/approvalService';
+import { blockchainService } from '../services/blockchainService';
+import { orderService } from '../services/orderService';
 
 const PlaceOrder = () => {
     const { medicines } = useContext(MedicineContext);
@@ -18,18 +24,75 @@ const PlaceOrder = () => {
     const [loading, setLoading] = useState(false);
     const [pageLoading, setPageLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+    const [selectedOrderToDelete, setSelectedOrderToDelete] = useState(null);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [blockchainEnabled, setBlockchainEnabled] = useState(false);
 
-    // Load orders from localStorage on component mount
+    // Load orders from API
+    const loadOrdersFromAPI = async (bustCache = false) => {
+        try {
+            console.log('loadOrdersFromAPI called with bustCache:', bustCache);
+            // Add cache-busting parameter if needed
+            const params = bustCache ? { _t: Date.now() } : {};
+            console.log('Calling orderService.getOrders with params:', params);
+            const response = await orderService.getOrders(params);
+            console.log('orderService.getOrders response:', response);
+            if (response.success && response.data.orders) {
+                // Transform API orders to match the frontend format
+                const transformedOrders = response.data.orders.map(order => ({
+                    id: order._id,
+                    medicineId: order.items[0]?.medicine?._id || order.items[0]?.medicine,
+                    medicineName: order.items[0]?.medicine?.name || 'Unknown Medicine',
+                    quantity: order.items[0]?.quantity || 0,
+                    pricePerUnit: order.items[0]?.unitPrice || 0,
+                    totalPrice: order.pricing?.total || 0,
+                    status: order.status === 'APPROVED' ? 'APPROVED' : 'PENDING_APPROVAL',
+                    aiDetection: {
+                        isFraud: order.notes?.includes('FRAUD') || false,
+                        riskLevel: order.priority === 'urgent' ? 'HIGH' : 'MEDIUM',
+                        reasons: order.notes?.includes('FRAUD') ? ['AI fraud detection triggered'] : []
+                    },
+                    managementApprovals: order.status === 'APPROVED' 
+                        ? managementMembers.map(member => ({
+                            ...member,
+                            approved: true, // Auto-approved by system
+                            timestamp: order.createdAt
+                        }))
+                        : managementMembers.map(member => ({
+                            ...member,
+                            approved: null,
+                            timestamp: null
+                        })),
+                    createdAt: order.createdAt,
+                    createdBy: order.customer?.name || 'Unknown User'
+                }));
+                setOrders(transformedOrders);
+                console.log('Orders loaded:', transformedOrders.length);
+            } else {
+                console.log('No orders in response or response not successful');
+            }
+        } catch (error) {
+            console.error('Failed to load orders from API:', error);
+            // Set empty array if API fails - no localStorage fallback
+            setOrders([]);
+        }
+    };
+
+    // Load orders on component mount
     useEffect(() => {
         const loadData = async () => {
             setPageLoading(true);
-            // Simulate loading time
-            await new Promise(resolve => setTimeout(resolve, 800));
             
-            const savedOrders = localStorage.getItem('orders');
-            if (savedOrders) {
-                setOrders(JSON.parse(savedOrders));
-            }
+            // Load orders from API
+            await loadOrdersFromAPI();
+            
+            // Load management members from API
+            await loadManagementMembers();
+            
+            // Check blockchain availability
+            const isBlockchainAvailable = await blockchainService.isBlockchainAvailable();
+            setBlockchainEnabled(isBlockchainAvailable);
+            
             setPageLoading(false);
         };
         
@@ -41,9 +104,14 @@ const PlaceOrder = () => {
         const fraudReasons = [];
         let riskLevel = 'LOW';
         
-        // Check for overpricing (if price is 50% higher than normal)
-        const normalPrice = 10; // Mock normal price per unit
+        // Get the actual medicine pricing from the API data
+        const normalPrice = medicineData.pricing?.sellingPrice || 
+                           medicineData.pricing?.costPrice || 
+                           parseFloat(medicineData.pricing?.replace(/[^0-9.]/g, '')) || 10;
+        
         const pricePerUnit = orderPrice / orderQuantity;
+        
+        // Check for overpricing (if price is 50% higher than normal)
         if (pricePerUnit > normalPrice * 1.5) {
             fraudReasons.push('Overpricing detected - Price is significantly higher than market rate');
             riskLevel = 'HIGH';
@@ -61,7 +129,11 @@ const PlaceOrder = () => {
             riskLevel = riskLevel === 'HIGH' ? 'HIGH' : 'MEDIUM';
         }
         
-        // Check for price anomalies
+        // Check for price anomalies (if price is too low compared to cost)
+        if (pricePerUnit < normalPrice * 0.3) {
+            fraudReasons.push('Suspiciously low pricing detected');
+            riskLevel = riskLevel === 'HIGH' ? 'HIGH' : 'MEDIUM';
+        }
         if (pricePerUnit < normalPrice * 0.3) {
             fraudReasons.push('Suspiciously low pricing detected');
             riskLevel = riskLevel === 'HIGH' ? 'HIGH' : 'MEDIUM';
@@ -74,17 +146,48 @@ const PlaceOrder = () => {
         };
     };
 
-    // Management Approval System
-    const managementMembers = [
-        { id: 1, name: 'John Smith', role: 'Senior Manager', approved: null },
-        { id: 2, name: 'Sarah Johnson', role: 'Operations Manager', approved: null },
-        { id: 3, name: 'Mike Chen', role: 'Finance Manager', approved: null },
-        { id: 4, name: 'Lisa Williams', role: 'Compliance Manager', approved: null }
-    ];
+    // State for management members
+    const [managementMembers, setManagementMembers] = useState([]);
+
+    // Load management members from API
+    const loadManagementMembers = async () => {
+        try {
+            const response = await axios.get(`${API_URL}/users?role=operations_manager,compliance_manager,finance_manager,senior_manager`, {
+                headers: {
+                    Authorization: `Bearer ${localStorage.getItem('token')}`
+                }
+            });
+
+            if (response.data.success && response.data.data.users) {
+                const managers = response.data.data.users.map((user, index) => ({
+                    id: user._id,
+                    name: user.name,
+                    role: user.role.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+                    approved: null
+                }));
+                setManagementMembers(managers);
+            } else {
+                // Fallback to default roles if no managers found
+                setManagementMembers([
+                    { id: 'ops', name: 'Operations Manager', role: 'Operations Manager', approved: null },
+                    { id: 'finance', name: 'Finance Manager', role: 'Finance Manager', approved: null },
+                    { id: 'compliance', name: 'Compliance Manager', role: 'Compliance Manager', approved: null }
+                ]);
+            }
+        } catch (error) {
+            console.error('Failed to load management members:', error);
+            // Fallback to default roles
+            setManagementMembers([
+                { id: 'ops', name: 'Operations Manager', role: 'Operations Manager', approved: null },
+                { id: 'finance', name: 'Finance Manager', role: 'Finance Manager', approved: null },
+                { id: 'compliance', name: 'Compliance Manager', role: 'Compliance Manager', approved: null }
+            ]);
+        }
+    };
 
     const handlePlaceOrder = async () => {
         if (!selectedMedicine || !quantity || !price) {
-            alert('Please fill in all fields');
+            toast.error('Please fill in all fields');
             return;
         }
 
@@ -92,12 +195,12 @@ const PlaceOrder = () => {
         const priceNum = parseFloat(price);
 
         if (quantityNum <= 0) {
-            alert('Quantity must be greater than 0');
+            toast.error('Quantity must be greater than 0');
             return;
         }
 
         if (priceNum <= 0) {
-            alert('Price must be greater than 0');
+            toast.error('Price must be greater than 0');
             return;
         }
 
@@ -105,12 +208,9 @@ const PlaceOrder = () => {
         setSubmitting(true);
 
         try {
-            // Simulate API call delay
-            await new Promise(resolve => setTimeout(resolve, 1500));
-
             const medicine = medicines.find(med => med.id === selectedMedicine);
             if (!medicine) {
-                alert('Selected medicine not found');
+                toast.error('Selected medicine not found');
                 return;
             }
 
@@ -125,37 +225,182 @@ const PlaceOrder = () => {
             // Run AI fraud detection
             const aiResult = aiDetectFraud(medicine, quantityNum, priceNum);
 
-            const newOrder = {
-                id: Date.now().toString(),
-                medicineId: selectedMedicine,
-                medicineName: medicine.name,
-                quantity: quantityNum,
-                pricePerUnit: priceNum,
-                totalPrice: quantityNum * priceNum,
-                status: aiResult.isFraud ? 'FLAGGED_FOR_REVIEW' : 'PENDING_APPROVAL',
-                aiDetection: aiResult,
-                managementApprovals: managementMembers.map(member => ({
-                    ...member,
-                    approved: null,
-                    timestamp: null
-                })),
-                createdAt: new Date().toISOString(),
-                createdBy: user?.name || 'Unknown User'
+            console.log('Medicine data:', medicine);
+            console.log('Selected medicine ID:', selectedMedicine);
+            console.log('User data:', user);
+            console.log('Medicine createdBy:', medicine.createdBy);
+
+            // Determine supplier - use medicine creator or current user as fallback
+            const supplierId = medicine.createdBy?._id || medicine.createdBy || user?.id || user?._id || '68c82306207a130191cf63c9'; // fallback to a valid user ID
+
+            console.log('Determined supplier ID:', supplierId);
+
+            // Prepare order data for API
+            const orderData = {
+                orderType: 'purchase',
+                supplier: supplierId,
+                items: [{
+                    medicine: selectedMedicine,
+                    quantity: quantityNum
+                    // Note: backend calculates pricing from medicine data
+                }],
+                shipping: {
+                    method: 'standard',
+                    address: {
+                        street: user?.organization?.address?.street || 'Hospital Address',
+                        city: user?.organization?.address?.city || 'City',
+                        state: user?.organization?.address?.state || 'State',
+                        zipCode: user?.organization?.address?.zipCode || '12345',
+                        country: user?.organization?.address?.country || 'USA'
+                    }
+                },
+                payment: {
+                    method: 'invoice',
+                    terms: 'net30'
+                },
+                notes: `AI Risk Level: ${aiResult.riskLevel}${aiResult.isFraud ? ' - FRAUD DETECTED' : ''}`,
+                priority: aiResult.riskLevel === 'HIGH' ? 'urgent' : 'medium'
             };
 
-            const updatedOrders = [...orders, newOrder];
-            setOrders(updatedOrders);
-            localStorage.setItem('orders', JSON.stringify(updatedOrders));
+            console.log('Order data being sent:', orderData);
 
-            // Reset form
-            setSelectedMedicine('');
-            setQuantity('');
-            setPrice('');
+            let orderResult;
+            
+            // Try to place order via blockchain first if available
+            if (blockchainEnabled) {
+                try {
+                    // Blockchain endpoint expects different format
+                    const blockchainData = {
+                        medicineId: selectedMedicine,
+                        medicineName: medicine.name,
+                        quantity: quantityNum,
+                        pricePerUnit: medicine.pricing?.sellingPrice || medicine.costPrice || priceNum,
+                        userId: user?.id || user?._id
+                    };
+                    
+                    console.log('Blockchain data being sent:', blockchainData);
+                    orderResult = await orderService.placeOrderWithBlockchain(blockchainData);
+                    toast.success('Order placed successfully with blockchain logging!');
+                } catch (blockchainError) {
+                    console.warn('Blockchain order failed, falling back to regular order:', blockchainError);
+                    console.error('Blockchain error details:', blockchainError.response?.data || blockchainError.message);
+                    // Fall back to regular order creation
+                    orderResult = await orderService.createOrder(orderData);
+                    toast.success('Order placed successfully!');
+                }
+            } else {
+                orderResult = await orderService.createOrder(orderData);
+                toast.success('Order placed successfully!');
+            }
 
-            alert(`Order placed successfully! ${aiResult.isFraud ? 'AI detected potential fraud - Order flagged for review.' : 'Order sent for management approval.'}`);
+            if (orderResult.success && orderResult.data.order) {
+                const createdOrder = orderResult.data.order;
+                console.log('Order result from backend:', orderResult);
+                console.log('Created order:', createdOrder);
+                
+                // Extract order ID - blockchain orders use 'id', database orders use '_id'
+                const orderId = createdOrder._id || createdOrder.id;
+                console.log('Order ID for approval:', orderId);
+                
+                // Check if this is a blockchain order (has blockchain-specific fields)
+                const isBlockchainOrder = createdOrder.blockchainOrderId || createdOrder.aiDetection || createdOrder.blockchainData;
+                
+                // Always create approval request for management (blockchain or regular orders)
+                try {
+                    // Add a small delay to ensure database consistency for blockchain orders
+                    if (isBlockchainOrder) {
+                        console.log('⏳ Waiting for database consistency before creating approval...');
+                        await new Promise(resolve => setTimeout(resolve, 200));
+                    }
+                    
+                    const approvalData = {
+                        relatedEntity: orderId,
+                        entityType: 'Order',
+                        requestType: 'purchase',
+                        requestDetails: {
+                            orderNumber: createdOrder.orderNumber || orderId,
+                            medicineId: selectedMedicine,
+                            medicineName: medicine.name,
+                            quantity: quantityNum,
+                            pricePerUnit: medicine.pricing?.sellingPrice || medicine.costPrice || priceNum,
+                            totalValue: quantityNum * priceNum,
+                            aiRiskLevel: aiResult.riskLevel,
+                            fraudDetected: aiResult.isFraud,
+                            fraudReasons: aiResult.reasons,
+                            isBlockchainOrder: isBlockchainOrder
+                        },
+                        requiredApprovals: aiResult.isFraud 
+                            ? ['compliance_manager', 'operations_manager', 'finance_manager'] // 3 approvals for fraud cases
+                            : ['operations_manager', 'finance_manager'] // 2 approvals for normal cases
+                    };
+
+                    console.log('Approval data being sent:', approvalData);
+                    
+                    let approvalResult;
+                    let retryCount = 0;
+                    const maxRetries = 3;
+                    
+                    // Retry logic for database consistency issues
+                    while (retryCount < maxRetries) {
+                        try {
+                            approvalResult = await createApproval(approvalData);
+                            break; // Success, exit retry loop
+                        } catch (approvalError) {
+                            retryCount++;
+                            console.log(`Approval attempt ${retryCount} failed:`, approvalError);
+                            
+                            // If it's a "not found" error and we have retries left, wait and try again
+                            if (approvalError.message?.includes('not found') && retryCount < maxRetries) {
+                                console.log(`⏳ Retrying approval creation in ${retryCount * 500}ms...`);
+                                await new Promise(resolve => setTimeout(resolve, retryCount * 500));
+                                continue;
+                            } else {
+                                throw approvalError; // Re-throw if not retryable or no retries left
+                            }
+                        }
+                    }
+                    
+                    if (approvalResult && approvalResult.success) {
+                        toast.info('Order sent to management for approval');
+                    }
+                } catch (approvalError) {
+                    console.error('Failed to create approval request:', approvalError);
+                    toast.warning('Order created but failed to send for approval. Please contact support.');
+                }
+                
+                // Show additional info for blockchain orders
+                if (isBlockchainOrder) {
+                    console.log('Blockchain order created - fraud detection already processed');
+                    
+                    if (orderResult.data.requiresApproval) {
+                        toast.info('AI flagged order for additional review');
+                    } else {
+                        toast.info('AI approved order - pending management approval');
+                    }
+                }
+
+                // Refresh orders list by fetching from API with cache busting
+                await loadOrdersFromAPI(true);
+
+                // Reset form
+                setSelectedMedicine('');
+                setQuantity('');
+                setPrice('');
+
+                const statusMessage = aiResult.isFraud 
+                    ? 'AI detected potential fraud - Order flagged for review.' 
+                    : 'Order sent for management approval.';
+                
+                toast.success(`Order placed successfully! ${statusMessage}`);
+            }
+
         } catch (error) {
-            alert('Failed to place order. Please try again.');
             console.error('Order placement error:', error);
+            console.error('Error details:', error.response?.data || error.message);
+            console.error('Error status:', error.response?.status);
+            
+            const errorMessage = error.response?.data?.message || error.message || 'Failed to place order. Please try again.';
+            toast.error(`Order placement failed: ${errorMessage}`);
         } finally {
             setLoading(false);
             setSubmitting(false);
@@ -166,42 +411,79 @@ const PlaceOrder = () => {
         setSubmitting(true);
         
         try {
-            // Simulate API call delay
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            const updatedOrders = orders.map(order => {
-                if (order.id === orderId) {
-                    const updatedApprovals = order.managementApprovals.map(manager => 
-                        manager.id === managerId 
-                            ? { ...manager, approved, timestamp: new Date().toISOString() }
-                            : manager
-                    );
+            // Find the order to get approval details
+            const order = orders.find(o => o.id === orderId);
+            if (!order) {
+                toast.error('Order not found');
+                return;
+            }
 
-                    // Check if we have enough approvals (at least 3 out of 4)
-                    const approvedCount = updatedApprovals.filter(manager => manager.approved === true).length;
-                    const rejectedCount = updatedApprovals.filter(manager => manager.approved === false).length;
+            // Get manager details
+            const manager = managementMembers.find(m => m.id === managerId);
+            if (!manager) {
+                toast.error('Manager not found');
+                return;
+            }
 
-                    let newStatus = order.status;
-                    if (approvedCount >= 3) {
-                        newStatus = 'APPROVED';
-                    } else if (rejectedCount >= 2) {
-                        newStatus = 'REJECTED';
+            // Submit approval through the approval API
+            const approvalData = {
+                orderId: order.id,
+                blockchainOrderId: order.blockchain?.blockchainOrderId,
+                approved: approved,
+                managerName: manager.name,
+                role: manager.role,
+                comments: approved ? 'Approved by management' : 'Rejected by management'
+            };
+
+            // Try to submit via blockchain approval if available
+            try {
+                const response = await axios.post(`${API_URL}/blockchain/manager-approval`, approvalData, {
+                    headers: {
+                        Authorization: `Bearer ${localStorage.getItem('token')}`,
+                        'Content-Type': 'application/json'
                     }
+                });
 
-                    return {
-                        ...order,
-                        managementApprovals: updatedApprovals,
-                        status: newStatus
-                    };
+                if (response.data.success) {
+                    toast.success(`Order ${approved ? 'approved' : 'rejected'} successfully`);
+                    
+                    // Refresh orders from API to get updated status
+                    await loadOrdersFromAPI();
+                } else {
+                    throw new Error(response.data.message || 'Approval submission failed');
                 }
-                return order;
-            });
+            } catch (blockchainError) {
+                console.warn('Blockchain approval failed, using fallback:', blockchainError);
+                
+                // Fallback to regular approval API
+                try {
+                    const fallbackData = {
+                        status: approved ? 'approved' : 'rejected',
+                        note: `${approved ? 'Approved' : 'Rejected'} by ${manager.name} (${manager.role})`
+                    };
 
-            setOrders(updatedOrders);
-            localStorage.setItem('orders', JSON.stringify(updatedOrders));
+                    const response = await axios.put(`${API_URL}/orders/${order.id}/status`, fallbackData, {
+                        headers: {
+                            Authorization: `Bearer ${localStorage.getItem('token')}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (response.data.success) {
+                        toast.success(`Order ${approved ? 'approved' : 'rejected'} successfully`);
+                        await loadOrdersFromAPI();
+                    } else {
+                        throw new Error(response.data.message || 'Status update failed');
+                    }
+                } catch (fallbackError) {
+                    console.error('Both blockchain and fallback approval failed:', fallbackError);
+                    toast.error('Failed to process approval. Please try again.');
+                }
+            }
+
         } catch (error) {
-            alert('Failed to update approval. Please try again.');
             console.error('Approval update error:', error);
+            toast.error(error.message || 'Failed to update approval. Please try again.');
         } finally {
             setSubmitting(false);
         }
@@ -225,8 +507,35 @@ const PlaceOrder = () => {
             default: return 'text-gray-600 bg-gray-100';
         }
     };
+    
+    const handleDeleteOrder = async () => {
+        if (!selectedOrderToDelete) return;
+        
+        setSubmitting(true);
+        
+        try {
+            // Use orderService to delete the order
+            const response = await orderService.deleteOrder(selectedOrderToDelete.id || selectedOrderToDelete._id);
+            
+            if (response.success) {
+                toast.success('Order deleted successfully');
+                
+                // Refresh orders from API
+                await loadOrdersFromAPI();
+                
+                setShowDeleteModal(false);
+                setSelectedOrderToDelete(null);
+            } else {
+                throw new Error(response.message || 'Failed to delete order');
+            }
 
-    return (
+        } catch (error) {
+            console.error('Delete order error:', error);
+            toast.error(error.message || 'Failed to delete order. Please try again.');
+        } finally {
+            setSubmitting(false);
+        }
+    };    return (
         <div className="container mx-auto px-4 py-8 relative">
             {/* Page loading overlay */}
             {pageLoading && (
@@ -245,7 +554,22 @@ const PlaceOrder = () => {
             )}
             
             <div className={`transition-all duration-500 ${pageLoading ? 'opacity-0' : 'opacity-100'}`}>
-                <h1 className="text-3xl font-bold text-gray-800 mb-8 animate-fadeIn">Place Order with AI Fraud Detection</h1>
+                <div className="mb-8">
+                    <h1 className="text-3xl font-bold text-gray-800 mb-2 animate-fadeIn">Place Order with AI Fraud Detection</h1>
+                    <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-2">
+                            <div className={`w-3 h-3 rounded-full ${blockchainEnabled ? 'bg-green-500' : 'bg-red-500'}`}></div>
+                            <span className={`text-sm font-medium ${blockchainEnabled ? 'text-green-600' : 'text-red-600'}`}>
+                                Blockchain {blockchainEnabled ? 'Connected' : 'Disconnected'}
+                            </span>
+                        </div>
+                        {blockchainEnabled && (
+                            <span className="text-sm text-gray-600">
+                                Orders will be logged to blockchain for authenticity verification
+                            </span>
+                        )}
+                    </div>
+                </div>
             
             {/* Order Form */}
             <Card className="mb-8 hover-lift transition-smooth animate-scaleIn">
@@ -309,6 +633,34 @@ const PlaceOrder = () => {
                 </div>
             </Card>
 
+            {/* Delete Confirmation Modal */}
+            {showDeleteModal && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                        <h3 className="text-xl font-bold mb-4">Delete Order</h3>
+                        <p className="mb-6">
+                            Are you sure you want to delete this order? This action cannot be undone.
+                        </p>
+                        <div className="flex justify-end gap-4">
+                            <button
+                                onClick={() => setShowDeleteModal(false)}
+                                className="px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300"
+                                disabled={submitting}
+                            >
+                                Cancel
+                            </button>
+                            <button
+                                onClick={handleDeleteOrder}
+                                className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                                disabled={submitting}
+                            >
+                                {submitting ? 'Deleting...' : 'Delete'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             {/* Orders List */}
             <div className="space-y-6">
                 <h2 className="text-2xl font-semibold text-gray-800">Order Status & Management Approval</h2>
@@ -371,6 +723,44 @@ const PlaceOrder = () => {
                                         )}
                                     </div>
 
+                                    {/* Blockchain Information */}
+                                    {order.blockchain && (
+                                        <div className="mb-4">
+                                            <h4 className="font-medium mb-2">Blockchain Status:</h4>
+                                            <div className="flex items-center gap-4">
+                                                {order.blockchain.blockchainLogged ? (
+                                                    <>
+                                                        <span className="px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm font-medium">
+                                                            ✅ Logged to Blockchain
+                                                        </span>
+                                                        {order.blockchain.blockchainOrderId && (
+                                                            <span className="text-sm text-gray-600">
+                                                                ID: {order.blockchain.blockchainOrderId}
+                                                            </span>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <span className="px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm font-medium">
+                                                        ⚠️ Not Logged to Blockchain
+                                                    </span>
+                                                )}
+                                            </div>
+                                            {order.blockchain.transactionHashes && (
+                                                <div className="mt-2 text-sm text-gray-600">
+                                                    <p>Transaction Hashes:</p>
+                                                    <ul className="ml-4">
+                                                        {order.blockchain.transactionHashes.orderTx && (
+                                                            <li>Order: {blockchainService.formatTransactionHash(order.blockchain.transactionHashes.orderTx)}</li>
+                                                        )}
+                                                        {order.blockchain.transactionHashes.fraudDetectionTx && (
+                                                            <li>Fraud Detection: {blockchainService.formatTransactionHash(order.blockchain.transactionHashes.fraudDetectionTx)}</li>
+                                                        )}
+                                                    </ul>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
                                     {/* Management Approvals */}
                                     <div>
                                         <h4 className="font-medium mb-3">Management Approvals:</h4>
@@ -428,10 +818,31 @@ const PlaceOrder = () => {
                             </div>
                             
                             <div className="mt-4 pt-4 border-t border-gray-200 text-sm text-gray-500">
-                                <div className="flex justify-between">
+                                <div className="flex justify-between items-center">
                                     <span>Order ID: {order.id}</span>
                                     <span>Created: {new Date(order.createdAt).toLocaleString()}</span>
-                                    <span>By: {order.createdBy}</span>
+                                    <div className="flex items-center gap-2">
+                                        <span>By: {order.createdBy}</span>
+                                        {order.blockchain?.blockchainOrderId && (
+                                            <a 
+                                                href={`/blockchain-validation?orderId=${order.blockchain.blockchainOrderId}`}
+                                                className="ml-2 px-3 py-1 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 transition-colors"
+                                            >
+                                                Verify on Blockchain
+                                            </a>
+                                        )}
+                                        {user && user.role === 'admin' && (
+                                            <button 
+                                                onClick={() => {
+                                                    setSelectedOrderToDelete(order);
+                                                    setShowDeleteModal(true);
+                                                }}
+                                                className="ml-4 px-3 py-1 bg-red-600 text-white text-xs rounded hover:bg-red-700 transition-colors"
+                                            >
+                                                Delete Order
+                                            </button>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                         </Card>

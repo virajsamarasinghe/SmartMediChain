@@ -21,24 +21,45 @@ const MedicineForm = ({ onClose, initialData }) => {
         setLoading(true);
         
         try {
-            // Simulate API call delay
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            const medicineData = { 
-                id: initialData?.id || Date.now().toString(),
-                name, 
-                manufacturer, 
-                batchNumber, 
-                expiryDate, 
-                quantity: Number(quantity),
-                currentStock: Number(currentStock),
-                minRequired: Number(minRequired),
-                maxCapacity: Number(maxCapacity)
-            };
+            // For new entries, create data according to backend model structure
+            let medicineData;
             
             if (initialData) {
-                updateMedicine(medicineData);
+                // For updates, we only need to send the updated fields
+                medicineData = {
+                    name,
+                    manufacturer: typeof manufacturer === 'object' ? manufacturer : { name: manufacturer },
+                    batchInfo: {
+                        quantity: Number(quantity),
+                        batchNumber: batchNumber,
+                        expiryDate: expiryDate
+                    }
+                };
+                
+                // Pass ID separately to updateMedicine
+                updateMedicine(initialData.id, medicineData);
             } else {
+                // For new medicine, match the full schema
+                medicineData = {
+                    name,
+                    category: 'Other', // Default value, can be expanded with a dropdown
+                    manufacturer: { 
+                        name: typeof manufacturer === 'object' ? manufacturer.name || 'Unknown' : manufacturer 
+                    },
+                    dosageForm: 'Tablet', // Default value, can be expanded with a dropdown
+                    pricing: {
+                        costPrice: Number(quantity) * 0.5, // Example calculation
+                        sellingPrice: Number(quantity) * 1.0, // Example calculation
+                        currency: 'USD'
+                    },
+                    batchInfo: {
+                        batchNumber: batchNumber,
+                        manufacturingDate: new Date().toISOString(), // Today's date
+                        expiryDate: expiryDate,
+                        quantity: Number(quantity)
+                    }
+                };
+                
                 addMedicine(medicineData);
             }
             
@@ -48,7 +69,17 @@ const MedicineForm = ({ onClose, initialData }) => {
             }
         } catch (error) {
             console.error('Error saving medicine:', error);
-            alert('Failed to save medicine. Please try again.');
+            
+            // More descriptive error message
+            if (error.message) {
+                alert(`Failed to save medicine: ${error.message}`);
+            } else {
+                alert('Failed to save medicine. Please try again.');
+            }
+            
+            // Keep form open with data on error
+            setLoading(false);
+            return;
         } finally {
             setLoading(false);
         }

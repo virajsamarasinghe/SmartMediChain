@@ -1,13 +1,13 @@
-# SmartMediChain AI Model API
+# SmartMediChain Fraud Detection API
 
-This directory contains the AI/ML model API that provides intelligent predictions and recommendations for the SmartMediChain system.
+This directory contains the AI/ML fraud detection API that provides intelligent fraud detection for procurement orders in the SmartMediChain system using a logistic regression model.
 
 ## Features
 
-- **Medicine Demand Prediction**: Predict future demand for medicines based on historical data
-- **Inventory Optimization**: Recommend optimal stock levels for medicines
-- **Smart Reordering**: Intelligent suggestions for when and how much to reorder
-- **Analytics Insights**: AI-powered insights for business intelligence
+- **Fraud Detection**: Detect fraudulent procurement orders using machine learning
+- **Risk Assessment**: Classify orders by risk level (LOW, MEDIUM, HIGH)
+- **Confidence Scoring**: Provide confidence scores for predictions
+- **Detailed Reasoning**: Explain why an order is flagged as fraudulent
 
 ## Setup
 
@@ -18,29 +18,40 @@ cd ai-model-api
 pip install -r requirements.txt
 ```
 
-### 2. Train the Models
+### 2. Place Your Trained Model
 
-Before running the API, you need to train the models:
+Ensure your trained logistic regression fraud detection model is placed at:
 
-```bash
-python train_model.py
 ```
-
-This will create sample data and train models for:
-- Medicine demand prediction
-- Inventory optimization
-
-The trained models will be saved in the `./models/` directory.
+./models/fraud_detection_model.pkl
+```
 
 ### 3. Configure Environment
 
-Copy the `.env` file and adjust the settings as needed:
+The `.env` file is already configured for fraud detection:
 
 ```bash
-cp .env.example .env
+# Fraud Detection AI Model API Configuration
+FLASK_ENV=development
+FLASK_DEBUG=True
+AI_MODEL_PORT=5001
+AI_MODEL_HOST=0.0.0.0
+
+# Fraud Detection Model Paths
+FRAUD_MODEL_PATH=./models/fraud_detection_model.pkl
+FRAUD_SCALER_PATH=./models/fraud_scaler.pkl
 ```
 
 ### 4. Start the API
+
+Using the startup script:
+
+```bash
+chmod +x start.sh
+./start.sh
+```
+
+Or directly:
 
 ```bash
 python app.py
@@ -51,126 +62,143 @@ The API will start on `http://localhost:5001` by default.
 ## API Endpoints
 
 ### Health Check
-- **GET** `/` - Check if the API is running and model is loaded
 
-### Model Management
-- **POST** `/model/load` - Load a specific model
+- **GET** `/` - Check if the API is running and fraud detection model is loaded
+
+### Fraud Detection
+
+- **POST** `/predict/fraud-detection` - Detect fraud in procurement orders
+
   ```json
   {
-    "model_path": "./models/model.pkl",
-    "scaler_path": "./models/scaler.pkl"
+    "ordered_quantity": 500,
+    "current_stock": 200,
+    "min_required": 100,
+    "max_capacity": 1000,
+    "unit_cost": 15.5,
+    "avg_usage_per_day": 25,
+    "restock_lead_time": 7
   }
   ```
 
-### Predictions
-- **POST** `/predict` - General prediction endpoint
+  **Response:**
+
   ```json
   {
-    "features": [value1, value2, ...]
+    "status": "success",
+    "result": {
+      "is_fraud": false,
+      "risk_level": "LOW",
+      "confidence_score": 85,
+      "reasons": [],
+      "probability": [[0.85, 0.15]]
+    },
+    "timestamp": "2024-01-01T12:00:00"
   }
   ```
 
-- **POST** `/predict/medicine-demand` - Predict medicine demand
-  ```json
-  {
-    "historical_sales": 50,
-    "current_stock": 100,
-    "season_factor": 1.2,
-    "trend_factor": 1.1,
-    "price": 25.50,
-    "days_since_last_order": 7
-  }
-  ```
+## Model Features
 
-- **POST** `/predict/inventory-optimization` - Get optimal inventory levels
-  ```json
-  {
-    "medicines": [
-      {
-        "id": "medicine_id",
-        "name": "Medicine Name",
-        "current_stock": 50,
-        "avg_daily_sales": 5,
-        "lead_time_days": 7,
-        "safety_stock_factor": 1.5,
-        "cost_per_unit": 10.00
-      }
-    ]
-  }
-  ```
+The fraud detection model uses the following features:
 
-## Model Training
+1. **ordered_quantity**: The quantity being ordered
+2. **current_stock**: Current stock level
+3. **min_required**: Minimum required stock level
+4. **max_capacity**: Maximum storage capacity
+5. **unit_cost**: Cost per unit
+6. **avg_usage_per_day**: Average daily usage
+7. **restock_lead_time**: Lead time for restocking
 
-The `train_model.py` script creates sample data and trains two main models:
+## Fraud Detection Logic
 
-1. **Demand Prediction Model**: Uses features like historical sales, current stock, seasonal factors, etc.
-2. **Inventory Optimization Model**: Predicts optimal stock levels based on sales patterns and lead times.
+The model detects two main types of fraud:
 
-### Custom Training Data
+1. **Over Unit Price**: When the unit cost is significantly higher than normal
+2. **Over Stock Order**: When the ordered quantity is excessive compared to:
+   - Maximum storage capacity
+   - Estimated need based on usage patterns
+   - Current stock levels
 
-To use your own training data, modify the `train_model.py` script to load your data instead of generating sample data.
+## Risk Levels
+
+- **LOW**: Confidence >= 90% and not fraud, or confidence < 70%
+- **MEDIUM**: Confidence between 70-90%
+- **HIGH**: Confidence >= 90% and fraud detected
 
 ## Integration with Backend
 
-The backend connects to this AI API through the `aiModelService.js` service. The backend provides the following endpoints:
+The backend connects to this fraud detection API through the `aiModelService.js` service:
 
-- `GET /api/ai/health` - Check AI model health
-- `GET /api/ai/medicine/:id/demand` - Get demand prediction for a medicine
-- `GET /api/ai/inventory/optimization` - Get inventory optimization recommendations
-- `GET /api/ai/reorder/suggestions` - Get smart reorder suggestions
-- `POST /api/ai/predictions/batch` - Get batch predictions
-- `GET /api/ai/insights` - Get AI-powered insights
+```javascript
+// Analyze order for fraud
+const result = await AIModelService.analyzeOrderForFraud(orderData);
+```
 
-## Customization
+The blockchain controller uses this for order validation:
 
-### Adding New Models
+```javascript
+// Call AI fraud detection
+const aiResult = await this.callAIFraudDetection(orderData);
+```
 
-1. Create your model training script
-2. Save the model using `joblib.dump()`
-3. Update the `app.py` to include new endpoints
-4. Update the backend service to call new endpoints
+## Docker Support
 
-### Modifying Features
+Build and run with Docker:
 
-1. Update the feature extraction logic in `train_model.py`
-2. Retrain the models
-3. Update the API endpoints to handle new features
-4. Update the backend service to send correct features
+```bash
+# Build the image
+docker build -t smartmedichain-fraud-api .
 
-## Monitoring
+# Run the container
+docker run -p 5001:5001 smartmedichain-fraud-api
+```
 
-The API includes basic logging and error handling. For production use, consider adding:
+Or use with docker-compose:
 
-- Model performance monitoring
-- Prediction logging
-- Model drift detection
-- A/B testing capabilities
+```bash
+docker-compose up ai-model-api
+```
 
 ## Dependencies
 
-See `requirements.txt` for the full list of dependencies. Main libraries:
+Main libraries used:
 
-- **Flask**: Web framework
+- **Flask**: Web framework for the API
+- **Flask-CORS**: Cross-origin resource sharing
 - **scikit-learn**: Machine learning library
-- **pandas/numpy**: Data manipulation
 - **joblib**: Model serialization
+- **numpy**: Numerical computations
+- **pandas**: Data manipulation
 
 ## Troubleshooting
 
 ### Common Issues
 
-1. **Model not loading**: Ensure the model files exist in the `./models/` directory
-2. **Port conflicts**: Change the port in `.env` if 5001 is already in use
-3. **Dependencies**: Make sure all requirements are installed with correct versions
+1. **Model not found**: Ensure `fraud_detection_model.pkl` exists in the `./models/` directory
+2. **Port conflicts**: Change `AI_MODEL_PORT` in `.env` if 5001 is already in use
+3. **Missing features**: Ensure all required features are provided in the request
 
 ### Logs
 
-Check the console output for detailed error messages and request logs.
+The API provides detailed logging for:
+
+- Model loading status
+- Prediction requests and results
+- Error messages and stack traces
+
+## Model Performance
+
+The logistic regression model provides:
+
+- Fast prediction times (< 100ms)
+- Interpretable results
+- Confidence scores for risk assessment
+- Detailed fraud reasoning
 
 ## Future Enhancements
 
-- Support for deep learning models (TensorFlow/PyTorch)
+- Support for additional fraud patterns
 - Real-time model updates
-- Advanced time series forecasting
-- Integration with external data sources
-- Model versioning and rollback capabilities
+- Historical fraud pattern analysis
+- Integration with external fraud databases
+- Advanced ensemble methods
