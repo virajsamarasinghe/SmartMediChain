@@ -109,16 +109,16 @@ connectDB().then(async () => {
 // Security middleware
 app.use(helmet());
 
-// CORS configuration
+// CORS configuration - localhost kept for local development, server IP for production
 app.use(cors({
   origin: [
-    'http://localhost:3000',
-    'http://localhost:3001',
-    'http://frontend:3000',
     'http://135.235.193.242:3000',
     'http://135.235.193.242:3001',
     'https://135.235.193.242:3000',
     'https://135.235.193.242:3001',
+    'http://localhost:3000',  // Keep for local development
+    'http://localhost:3001',  // Keep for local development
+    'http://frontend:3000',
     process.env.CORS_ORIGIN
   ].filter(Boolean),
   credentials: true,
