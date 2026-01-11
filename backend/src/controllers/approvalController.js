@@ -96,7 +96,7 @@ const createApproval = async (req, res) => {
 // @access  Private
 const getApprovals = async (req, res) => {
   try {
-    const { status, entityType, role } = req.query;
+    const { status, entityType, role, relatedEntity } = req.query;
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
     const skip = (page - 1) * limit;
@@ -106,17 +106,20 @@ const getApprovals = async (req, res) => {
     
     if (status) filter.status = status;
     if (entityType) filter.entityType = entityType;
+    if (relatedEntity) filter.relatedEntity = relatedEntity;
     
-    // Filter based on user role
-    if (['operations_manager', 'compliance_manager', 'finance_manager', 'senior_manager'].includes(req.user.role)) {
-      // For approval managers, show requests that need their approval
-      filter['requiredApprovals.role'] = req.user.role;
-    } else if (req.user.role === 'admin') {
-      // Admin users can view approvals but cannot modify them (no filter)
-      // They see all approvals for monitoring purposes
-    } else {
-      // For other users, only show their requests
-      filter.requestedBy = req.user._id;
+    // Filter based on user role (skip role-based filtering if relatedEntity is specified)
+    if (!relatedEntity) {
+      if (['operations_manager', 'compliance_manager', 'finance_manager', 'senior_manager'].includes(req.user.role)) {
+        // For approval managers, show requests that need their approval
+        filter['requiredApprovals.role'] = req.user.role;
+      } else if (req.user.role === 'admin') {
+        // Admin users can view approvals but cannot modify them (no filter)
+        // They see all approvals for monitoring purposes
+      } else {
+        // For other users, only show their requests
+        filter.requestedBy = req.user._id;
+      }
     }
     
     // If role filter is specified, filter by that specific required approval role

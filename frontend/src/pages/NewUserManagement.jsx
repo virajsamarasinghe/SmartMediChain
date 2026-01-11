@@ -21,15 +21,12 @@ const NewUserManagement = () => {
     const [activeFilter, setActiveFilter] = useState('');
     const [blurContent, setBlurContent] = useState(false);
 
-    // User roles for dropdown
     const roles = ['admin', 'supplier', 'distributor', 'retailer', 'hospital', 'patient'];
 
-    // Fetch users when page, filters change
     useEffect(() => {
         loadUsers();
     }, [currentPage, roleFilter, activeFilter]);
 
-    // Load users from API
     const loadUsers = async () => {
         try {
             setLoading(true);
@@ -57,43 +54,38 @@ const NewUserManagement = () => {
         }
     };
 
-    // Open modal to add new user
     const handleAddUser = () => {
         setSelectedUser(null);
         setIsFormModalOpen(true);
         setBlurContent(true);
     };
 
-    // Open modal to edit user
     const handleEditUser = (user) => {
         setSelectedUser(user);
         setIsFormModalOpen(true);
         setBlurContent(true);
     };
 
-    // Open modal to delete user
     const handleDeleteClick = (user) => {
         setSelectedUser(user);
         setIsDeleteModalOpen(true);
         setBlurContent(true);
     };
 
-    // Open modal to reset user's password
     const handleResetPassword = (user) => {
         setSelectedUser(user);
         setIsResetPasswordModalOpen(true);
         setBlurContent(true);
     };
 
-    // Create new user
     const handleSubmitUser = async (userData) => {
         try {
             if (selectedUser) {
-                // Update existing user
+
                 const response = await userService.updateUser(selectedUser._id, userData);
                 if (response.success) {
                     toast.success('User updated successfully');
-                    loadUsers(); // Reload the user list
+                    loadUsers(); 
                 } else {
                     toast.error(response.message || 'Failed to update user');
                 }
@@ -102,7 +94,7 @@ const NewUserManagement = () => {
                 const response = await userService.createUser(userData);
                 if (response.success) {
                     toast.success('User created successfully');
-                    loadUsers(); // Reload the user list
+                    loadUsers();
                 } else {
                     toast.error(response.message || 'Failed to create user');
                 }
@@ -194,7 +186,7 @@ const NewUserManagement = () => {
                             value={roleFilter} 
                             onChange={(e) => {
                                 setRoleFilter(e.target.value);
-                                setCurrentPage(1); // Reset to first page
+                                setCurrentPage(1); 
                             }}
                             className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
                         >
@@ -213,7 +205,7 @@ const NewUserManagement = () => {
                             value={activeFilter} 
                             onChange={(e) => {
                                 setActiveFilter(e.target.value);
-                                setCurrentPage(1); // Reset to first page
+                                setCurrentPage(1); 
                             }}
                             className="block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 rounded-md"
                         >

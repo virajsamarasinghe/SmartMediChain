@@ -6,8 +6,49 @@
 const SmartContractService = require('../services/smartContractService');
 const AIModelService = require('../services/aiModelService');
 const Order = require('../models/Order');
+const Approval = require('../models/Approval');
+const User = require('../models/User');
 
 class BlockchainController {
+    /**
+     * List all blockchain orders - always fetches directly from blockchain
+     */
+    listAllBlockchainOrders = async (req, res) => {
+        try {
+            console.log('📋 listAllBlockchainOrders called');
+            console.log('🔗 isInitialized:', this.isInitialized);
+
+            if (!this.isInitialized) {
+                console.log('❌ Blockchain service not initialized');
+                return res.status(503).json({
+                    success: false,
+                    message: 'Blockchain service not available',
+                    orders: []
+                });
+            }
+
+            // Always fetch directly from blockchain
+            console.log('🔍 Fetching all orders from blockchain...');
+            const blockchainOrders = await this.smartContractService.getAllOrders();
+            console.log('📦 Blockchain orders received:', blockchainOrders.length);
+
+            const results = [];
+            for (const order of blockchainOrders) {
+                if (order) {
+                    results.push({
+                        dbOrder: null,
+                        blockchainOrder: order
+                    });
+                }
+            }
+
+            console.log(`✅ Returning ${results.length} blockchain orders`);
+            res.json({ success: true, orders: results });
+        } catch (error) {
+            console.error('❌ Error listing all blockchain orders:', error);
+            res.status(500).json({ success: false, message: 'Failed to list blockchain orders', error: error.message });
+        }
+    };
     constructor() {
         this.smartContractService = new SmartContractService();
         this.isInitialized = false;
@@ -137,7 +178,7 @@ class BlockchainController {
 
             // 4. Save to traditional database
             const orderNumber = `BC-${Date.now()}`;
-            
+
             const databaseOrder = new Order({
                 orderNumber,
                 orderType: 'purchase',
@@ -169,7 +210,7 @@ class BlockchainController {
             try {
                 savedOrder = await databaseOrder.save();
                 console.log('✅ Order saved to database with ID:', savedOrder._id);
-                
+
                 // Verify the order was actually saved by querying it back
                 const verifyOrder = await Order.findById(savedOrder._id);
                 if (!verifyOrder) {
@@ -178,10 +219,10 @@ class BlockchainController {
                 } else {
                     console.log('✅ Order verification successful:', verifyOrder._id);
                 }
-                
+
                 // Add a small delay to ensure database consistency
                 await new Promise(resolve => setTimeout(resolve, 100));
-                
+
             } catch (dbError) {
                 console.error('❌ Failed to save order to database:', dbError);
                 return res.status(500).json({
@@ -207,6 +248,52 @@ class BlockchainController {
                 blockchainOrderId,
                 createdAt: new Date().toISOString()
             };
+
+            // 5. Create approval record for management workflow
+            try {
+                // Get management users for approval workflow
+                const managementUsers = await User.find({
+                    role: { $in: ['operations_manager', 'compliance_manager', 'finance_manager'] },
+                    isActive: true
+                }).limit(3);
+
+                const requiredApprovals = managementUsers.map(user => ({
+                    role: user.role,
+                    isApproved: false,
+                    approvedBy: null,
+                    approvedAt: null,
+                    comments: null
+                }));
+
+                const approval = new Approval({
+                    relatedEntity: savedOrder._id,
+                    entityType: 'Order',
+                    requestType: 'purchase',
+                    requestDetails: {
+                        orderNumber: savedOrder.orderNumber,
+                        medicineId,
+                        medicineName,
+                        quantity: numQuantity,
+                        pricePerUnit: numPricePerUnit,
+                        totalValue: numQuantity * numPricePerUnit,
+                        aiRiskLevel: aiResult.riskLevel,
+                        fraudDetected: aiResult.isFraud,
+                        fraudReasons: aiResult.reasons,
+                        isBlockchainOrder: true,
+                        blockchainOrderId
+                    },
+                    requiredApprovals,
+                    status: 'pending',
+                    createdBy: userId,
+                    priority: aiResult.riskLevel === 'HIGH' || aiResult.riskLevel === 'CRITICAL' ? 'high' : 'medium'
+                });
+
+                await approval.save();
+                console.log('✅ Approval record created for blockchain order:', approval._id);
+            } catch (approvalError) {
+                console.error('❌ Failed to create approval record:', approvalError);
+                // Don't fail the order if approval creation fails
+            }
 
             res.json({
                 success: true,
@@ -366,19 +453,19 @@ class BlockchainController {
         try {
             const now = Date.now();
             const clientIp = req.ip || req.connection.remoteAddress;
-            
+
             // Check if we have cached data that's still valid
-            if (this.statusCache.data && 
-                this.statusCache.lastUpdated && 
+            if (this.statusCache.data &&
+                this.statusCache.lastUpdated &&
                 (now - this.statusCache.lastUpdated) < this.statusCache.cacheTimeout) {
-                
+
                 // Set cache headers for client-side caching
                 res.set({
                     'Cache-Control': 'public, max-age=10',
                     'ETag': `"${this.statusCache.lastUpdated}"`,
                     'Last-Modified': new Date(this.statusCache.lastUpdated).toUTCString()
                 });
-                
+
                 console.log(`🔄 [${clientIp}] Served cached blockchain status`);
                 return res.json({
                     success: true,
