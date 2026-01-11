@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { API_URL, REFRESH_TOKEN_KEY, TOKEN_KEY } from '../config';
 
-const API_BASE_URL = API_URL;
+const API_BASE_URL = API_URL || 'http://135.235.193.242:3001/api';
 
 // Create axios instance with default config
 const apiClient = axios.create({

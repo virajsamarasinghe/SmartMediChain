@@ -1,5 +1,5 @@
 // API configuration
-export const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+export const API_URL = process.env.REACT_APP_API_URL || 'http://135.235.193.242:3001/api';
 
 // Token configuration
 export const TOKEN_KEY = 'token';

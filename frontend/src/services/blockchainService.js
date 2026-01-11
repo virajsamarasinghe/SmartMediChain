@@ -5,7 +5,7 @@
 
 import { authService } from './authService';
 
-const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://localhost:3001';
+const API_BASE_URL = process.env.REACT_APP_BACKEND_URL || 'http://135.235.193.242:3001';
 
 class BlockchainService {
     constructor() {

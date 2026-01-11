@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // When running in a browser, we need to use the publicly accessible URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://135.235.193.242:3001/api';
 
 // Fix for Docker environment - replace container names with localhost
 const BROWSER_FRIENDLY_URL = API_BASE_URL.replace('http://backend:', 'http://localhost:');
