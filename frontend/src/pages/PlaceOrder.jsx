@@ -55,7 +55,7 @@ const PlaceOrder = () => {
                     managementApprovals: order.status === 'APPROVED' 
                         ? managementMembers.map(member => ({
                             ...member,
-                            approved: true, // Auto-approved by system
+                            approved: true,
                             timestamp: order.createdAt
                         }))
                         : managementMembers.map(member => ({
