@@ -25,17 +25,7 @@
 
 ---
 
-### 3. Manufacturer Admin (PharmaTech)
-- **Email**: `manufacturer@pharmatech.com`
-- **Password**: `manufacturer123`
-- **Role**: Admin
-- **Organization**: PharmaTech Manufacturing Ltd
-- **License**: MFG-2024-001
-- **Access**: Manufacturing and product management
-
----
-
-### 4. Operations Manager
+### 3. Operations Manager
 - **Email**: `operations@smartmedichain.com`
 - **Password**: `operations123`
 - **Role**: Operations Manager
@@ -44,7 +34,7 @@
 
 ---
 
-### 5. Compliance Manager
+### 4. Compliance Manager
 - **Email**: `compliance@smartmedichain.com`
 - **Password**: `compliance123`
 - **Role**: Compliance Manager
@@ -53,7 +43,7 @@
 
 ---
 
-### 6. Finance Manager
+### 5. Finance Manager
 - **Email**: `finance@smartmedichain.com`
 - **Password**: `finance123`
 - **Role**: Finance Manager
@@ -62,16 +52,7 @@
 
 ---
 
-### 7. Senior Manager
-- **Email**: `senior@smartmedichain.com`
-- **Password**: `senior123`
-- **Role**: Senior Manager
-- **Organization**: SmartMediChain Senior Management
-- **Access**: High-level management operations
-
----
-
-### 8. Hospital Operations Manager
+### 6. Hospital Operations Manager
 - **Email**: `hospital@citygeneral.com`
 - **Password**: `hospital123`
 - **Role**: Operations Manager
@@ -81,17 +62,7 @@
 
 ---
 
-### 9. Hospital User
-- **Email**: `hospital.user@smartmedichain.com`
-- **Password**: `hospital123`
-- **Role**: Hospital
-- **Organization**: General Hospital System
-- **License**: HOSP-2024-002
-- **Access**: Hospital basic operations
-
----
-
-### 10. Pharmacy Stock Manager
+### 7. Pharmacy Stock Manager
 - **Email**: `pharmacy@centralpharm.com`
 - **Password**: `pharmacy123`
 - **Role**: Pharmacy Stock Manager
@@ -101,41 +72,17 @@
 
 ---
 
-### 11. Pharmacy Order Manager
-- **Email**: `pharmacy.orders@smartmedichain.com`
-- **Password**: `pharmacy123`
-- **Role**: Pharmacy Order Manager
-- **Organization**: SmartMediChain Pharmacy Orders
-- **Access**: Pharmacy order processing
-
----
-
-### 12. Supplier User
-- **Email**: `supplier.user@smartmedichain.com`
-- **Password**: `supplier123`
-- **Role**: Supplier
-- **Organization**: Medical Supplier Co
-- **License**: SUP-2024-002
-- **Access**: Supplier operations
-
----
-
 ## 📋 Quick Reference Table
 
 | User Type | Email | Password | Role |
 |-----------|-------|----------|------|
 | System Admin | admin@smartmedichain.com | admin123 | Admin |
 | Supplier Admin | supplier@medisupply.com | supplier123 | Admin |
-| Manufacturer | manufacturer@pharmatech.com | manufacturer123 | Admin |
 | Operations | operations@smartmedichain.com | operations123 | Operations Manager |
 | Compliance | compliance@smartmedichain.com | compliance123 | Compliance Manager |
 | Finance | finance@smartmedichain.com | finance123 | Finance Manager |
-| Senior Manager | senior@smartmedichain.com | senior123 | Senior Manager |
 | Hospital Ops | hospital@citygeneral.com | hospital123 | Operations Manager |
-| Hospital User | hospital.user@smartmedichain.com | hospital123 | Hospital |
 | Pharmacy Stock | pharmacy@centralpharm.com | pharmacy123 | Pharmacy Stock Manager |
-| Pharmacy Orders | pharmacy.orders@smartmedichain.com | pharmacy123 | Pharmacy Order Manager |
-| Supplier User | supplier.user@smartmedichain.com | supplier123 | Supplier |
 
 ---
 

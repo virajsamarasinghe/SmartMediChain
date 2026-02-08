@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
 const User = require('../models/User');
 const Medicine = require('../models/Medicine');
-const Order = require('../models/Order');
 require('dotenv').config();
 
 const connectDB = async () => {
@@ -61,25 +60,6 @@ const seedUsers = async () => {
         profile: {
           phone: '+1-555-0123',
           licenseNumber: 'SUP-LIC-001'
-        }
-      },
-      {
-        name: 'PharmaTech Manufacturing',
-        email: 'manufacturer@pharmatech.com',
-        password: 'manufacturer123',
-        role: 'admin',
-        isVerified: true,
-        organization: {
-          name: 'PharmaTech Manufacturing Ltd',
-          type: 'manufacturer',
-          license: 'MFG-2024-001',
-          address: {
-            street: '789 Manufacturing Blvd',
-            city: 'Industrial City',
-            state: 'TX',
-            zipCode: '75001',
-            country: 'USA'
-          }
         }
       },
       {
@@ -185,97 +165,6 @@ const seedUsers = async () => {
           phone: '+1-555-0003',
           specialization: 'Financial Management'
         }
-      },
-      {
-        name: 'Lisa Senior Manager',
-        email: 'senior@smartmedichain.com',
-        password: 'senior123',
-        role: 'senior_manager',
-        isVerified: true,
-        organization: {
-          name: 'SmartMediChain Senior Management',
-          type: 'hospital',
-          address: {
-            street: '321 Executive Way',
-            city: 'Executive City',
-            state: 'FL',
-            zipCode: '33102',
-            country: 'USA'
-          }
-        },
-        profile: {
-          phone: '+1-555-0004',
-          specialization: 'Senior Management'
-        }
-      },
-      {
-        name: 'Tom Pharmacy Order Manager',
-        email: 'pharmacy.orders@smartmedichain.com',
-        password: 'pharmacy123',
-        role: 'pharmacy_order_manager',
-        isVerified: true,
-        organization: {
-          name: 'SmartMediChain Pharmacy Orders',
-          type: 'pharmacy',
-          address: {
-            street: '987 Order Management St',
-            city: 'Pharmacy City',
-            state: 'WA',
-            zipCode: '98103',
-            country: 'USA'
-          }
-        },
-        profile: {
-          phone: '+1-555-0005',
-          specialization: 'Pharmacy Order Management'
-        }
-      },
-      {
-        name: 'General Hospital User',
-        email: 'hospital.user@smartmedichain.com',
-        password: 'hospital123',
-        role: 'hospital',
-        isVerified: true,
-        organization: {
-          name: 'General Hospital System',
-          type: 'hospital',
-          license: 'HOSP-2024-002',
-          address: {
-            street: '555 Hospital Drive',
-            city: 'Healthcare City',
-            state: 'CA',
-            zipCode: '90213',
-            country: 'USA'
-          }
-        },
-        profile: {
-          phone: '+1-555-0006',
-          specialization: 'Hospital Operations'
-        }
-      },
-      {
-        name: 'Medical Supplier Co',
-        email: 'supplier.user@smartmedichain.com',
-        password: 'supplier123',
-        role: 'supplier',
-        isVerified: true,
-        organization: {
-          name: 'Medical Supplier Co',
-          type: 'supplier',
-          license: 'SUP-2024-002',
-          address: {
-            street: '777 Supply Chain Blvd',
-            city: 'Supply City',
-            state: 'TX',
-            zipCode: '75003',
-            country: 'USA'
-          }
-        },
-        profile: {
-          phone: '+1-555-0007',
-          licenseNumber: 'SUP-LIC-002',
-          specialization: 'Medical Equipment Supply'
-        }
       }
     ];
 
@@ -298,7 +187,6 @@ const seedMedicines = async (users) => {
     console.log('🗑️  Existing medicines cleared');
 
     const supplier = users.find(u => u.email === 'supplier@medisupply.com');
-    const manufacturer = users.find(u => u.email === 'manufacturer@pharmatech.com');
 
     const medicines = [
       {
@@ -346,7 +234,7 @@ const seedMedicines = async (users) => {
           regulatoryBody: 'FDA',
           prescriptionRequired: true
         },
-        createdBy: manufacturer._id
+        createdBy: supplier._id
       },
       {
         name: 'Paracetamol 500mg',
@@ -386,7 +274,7 @@ const seedMedicines = async (users) => {
           approvalNumber: 'FDA-PCM-2024-001',
           prescriptionRequired: false
         },
-        createdBy: manufacturer._id
+        createdBy: supplier._id
       },
       {
         name: 'Lisinopril 10mg',
@@ -426,7 +314,7 @@ const seedMedicines = async (users) => {
           approvalNumber: 'FDA-LIS-2024-001',
           prescriptionRequired: true
         },
-        createdBy: manufacturer._id
+        createdBy: supplier._id
       },
       {
         name: 'Metformin 850mg',
@@ -466,7 +354,7 @@ const seedMedicines = async (users) => {
           approvalNumber: 'FDA-MET-2024-001',
           prescriptionRequired: true
         },
-        createdBy: manufacturer._id
+        createdBy: supplier._id
       },
       {
         name: 'Vitamin D3 1000IU',
@@ -517,130 +405,6 @@ const seedMedicines = async (users) => {
     return await Medicine.find({});
   } catch (error) {
     console.error('❌ Error seeding medicines:', error);
-  }
-};
-
-const seedOrders = async (users, medicines) => {
-  try {
-    // Clear existing orders
-    await Order.deleteMany({});
-    console.log('🗑️  Existing orders cleared');
-
-    const hospital = users.find(u => u.email === 'hospital@citygeneral.com');
-    const pharmacy = users.find(u => u.email === 'pharmacy@centralpharm.com');
-    const supplier = users.find(u => u.email === 'supplier@medisupply.com');
-
-    const orders = [
-      {
-        orderNumber: `ORD-20240101-001`,
-        orderType: 'purchase',
-        customer: hospital._id,
-        supplier: supplier._id,
-        items: [
-          {
-            medicine: medicines[0]._id, // Amoxicillin
-            quantity: 50,
-            unitPrice: medicines[0].pricing.sellingPrice,
-            totalPrice: 50 * medicines[0].pricing.sellingPrice,
-            batchNumber: medicines[0].batchInfo.batchNumber,
-            expiryDate: medicines[0].batchInfo.expiryDate
-          },
-          {
-            medicine: medicines[1]._id, // Paracetamol
-            quantity: 100,
-            unitPrice: medicines[1].pricing.sellingPrice,
-            totalPrice: 100 * medicines[1].pricing.sellingPrice,
-            batchNumber: medicines[1].batchInfo.batchNumber,
-            expiryDate: medicines[1].batchInfo.expiryDate
-          }
-        ],
-        pricing: {
-          subtotal: (50 * medicines[0].pricing.sellingPrice) + (100 * medicines[1].pricing.sellingPrice),
-          tax: 0,
-          shipping: 15.00,
-          total: 0
-        },
-        status: 'delivered',
-        priority: 'high',
-        shipping: {
-          address: {
-            name: 'City General Hospital',
-            street: '321 Health Street',
-            city: 'Medical City',
-            state: 'FL',
-            zipCode: '33101',
-            country: 'USA'
-          },
-          method: 'express',
-          trackingNumber: 'TRK123456789'
-        },
-        payment: {
-          method: 'bank_transfer',
-          status: 'paid',
-          paidAt: new Date()
-        },
-        createdBy: hospital._id
-      },
-      {
-        orderNumber: `ORD-20240102-002`,
-        orderType: 'purchase',
-        customer: pharmacy._id,
-        supplier: supplier._id,
-        items: [
-          {
-            medicine: medicines[1]._id, // Paracetamol
-            quantity: 200,
-            unitPrice: medicines[1].pricing.sellingPrice,
-            totalPrice: 200 * medicines[1].pricing.sellingPrice,
-            batchNumber: medicines[1].batchInfo.batchNumber,
-            expiryDate: medicines[1].batchInfo.expiryDate
-          },
-          {
-            medicine: medicines[4]._id, // Vitamin D3
-            quantity: 50,
-            unitPrice: medicines[4].pricing.sellingPrice,
-            totalPrice: 50 * medicines[4].pricing.sellingPrice,
-            batchNumber: medicines[4].batchInfo.batchNumber,
-            expiryDate: medicines[4].batchInfo.expiryDate
-          }
-        ],
-        pricing: {
-          subtotal: (200 * medicines[1].pricing.sellingPrice) + (50 * medicines[4].pricing.sellingPrice),
-          tax: 0,
-          shipping: 10.00,
-          total: 0
-        },
-        status: 'shipped',
-        priority: 'medium',
-        shipping: {
-          address: {
-            name: 'Central Pharmacy Chain',
-            street: '654 Pharmacy Lane',
-            city: 'Retail City',
-            state: 'WA',
-            zipCode: '98101',
-            country: 'USA'
-          },
-          method: 'standard',
-          trackingNumber: 'TRK987654321'
-        },
-        payment: {
-          method: 'credit',
-          status: 'paid'
-        },
-        createdBy: pharmacy._id
-      }
-    ];
-
-    // Calculate totals
-    orders.forEach(order => {
-      order.pricing.total = order.pricing.subtotal + order.pricing.tax + order.pricing.shipping;
-    });
-
-    await Order.insertMany(orders);
-    console.log('✅ Orders seeded successfully');
-  } catch (error) {
-    console.error('❌ Error seeding orders:', error);
   }
 };
 
@@ -847,7 +611,7 @@ const autoSeedUsers = async () => {
             street: '987 Order Management St',
             city: 'Pharmacy City',
             state: 'WA',
-            zipCode: '98103',
+            zipCode: '98102',
             country: 'USA'
           }
         },
@@ -901,21 +665,16 @@ const seedDatabase = async () => {
 
     const users = await seedUsers();
     const medicines = await seedMedicines(users);
-    await seedOrders(users, medicines);
 
     console.log('✅ Database seeding completed successfully!');
     console.log('📧 Login credentials for all roles:');
     console.log('   🔑 Admin: admin@smartmedichain.com / admin123');
     console.log('   🏭 Supplier: supplier@medisupply.com / supplier123');
-    console.log('   🏭 Supplier User: supplier.user@smartmedichain.com / supplier123');
-    console.log('   🏥 Hospital: hospital@citygeneral.com / hospital123');
-    console.log('   🏥 Hospital User: hospital.user@smartmedichain.com / hospital123');
+    console.log('    Hospital: hospital@citygeneral.com / hospital123');
     console.log('   💊 Pharmacy Stock: pharmacy@centralpharm.com / pharmacy123');
-    console.log('   📦 Pharmacy Orders: pharmacy.orders@smartmedichain.com / pharmacy123');
     console.log('   ⚙️  Operations Manager: operations@smartmedichain.com / operations123');
     console.log('   📋 Compliance Manager: compliance@smartmedichain.com / compliance123');
     console.log('   💰 Finance Manager: finance@smartmedichain.com / finance123');
-    console.log('   👔 Senior Manager: senior@smartmedichain.com / senior123');
 
     process.exit(0);
   } catch (error) {

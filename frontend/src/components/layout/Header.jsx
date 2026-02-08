@@ -16,12 +16,24 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
     const userMenuRef = useRef(null);
     const searchRef = useRef(null);
     
-    // Mock notifications data
-    const notifications = [
+    // Notifications state
+    const [notifications, setNotifications] = useState([
         { id: 1, message: "Medicine stock low: Paracetamol", time: "10 mins ago", isRead: false },
         { id: 2, message: "New shipment arrived: Amoxicillin", time: "1 hour ago", isRead: false },
         { id: 3, message: "Medicine expiring soon: Ibuprofen", time: "2 days ago", isRead: true },
-    ];
+    ]);
+
+    const markAllAsRead = () => {
+        setNotifications(notifications.map(notification => 
+            ({ ...notification, isRead: true })
+        ));
+    };
+
+    const markAsRead = (id) => {
+        setNotifications(notifications.map(notification => 
+            notification.id === id ? { ...notification, isRead: true } : notification
+        ));
+    };
 
     // Handle click outside to close dropdowns
     useEffect(() => {
@@ -76,10 +88,6 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
         navigate('/');
     };
 
-    const isActiveRoute = (path) => {
-        return location.pathname === path;
-    };
-
     return (
         <header className="bg-gradient-to-r from-blue-700 to-blue-600 text-white shadow-lg sticky top-0 z-30">
             <div className="container mx-auto px-4 py-2 flex justify-between items-center">
@@ -108,47 +116,7 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
                     </div>
                 </div>
 
-                {/* Navigation */}
-                <nav className="hidden lg:block">
-                    <ul className="flex items-center space-x-6">
-                        <li>
-                            <Link 
-                                to="/dashboard" 
-                                className={`py-2 px-3 rounded transition-colors ${
-                                    isActiveRoute('/dashboard') 
-                                        ? 'bg-blue-800 text-white' 
-                                        : 'hover:text-blue-200 hover:bg-blue-700'
-                                }`}
-                            >
-                                Dashboard
-                            </Link>
-                        </li>
-                        <li>
-                            <Link 
-                                to="/medicine-management" 
-                                className={`py-2 px-3 rounded transition-colors ${
-                                    isActiveRoute('/medicine-management') 
-                                        ? 'bg-blue-800 text-white' 
-                                        : 'hover:text-blue-200 hover:bg-blue-700'
-                                }`}
-                            >
-                                Medicines
-                            </Link>
-                        </li>
-                        <li>
-                            <Link 
-                                to="/order-medicines" 
-                                className={`py-2 px-3 rounded transition-colors ${
-                                    isActiveRoute('/order-medicines') 
-                                        ? 'bg-blue-800 text-white' 
-                                        : 'hover:text-blue-200 hover:bg-blue-700'
-                                }`}
-                            >
-                                Place Order
-                            </Link>
-                        </li>
-                    </ul>
-                </nav>
+
 
                 {/* Right side buttons */}
                 <div className="flex items-center space-x-2">
@@ -236,14 +204,20 @@ const Header = ({ toggleSidebar, isSidebarOpen }) => {
                         }`}>
                             <div className="px-4 py-2 font-medium border-b border-gray-200 flex justify-between items-center">
                                 <span>Notifications</span>
-                                <button className="text-sm text-blue-600 hover:text-blue-800 transition-colors duration-200">Mark all as read</button>
+                                <button 
+                                    onClick={markAllAsRead}
+                                    className="text-sm text-blue-600 hover:text-blue-800 transition-colors duration-200"
+                                >
+                                    Mark all as read
+                                </button>
                             </div>
                             <div className="max-h-64 overflow-y-auto">
                                 {notifications.length > 0 ? (
                                     notifications.map(notification => (
                                         <div 
                                             key={notification.id} 
-                                            className={`px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200 ${notification.isRead ? '' : 'bg-blue-50'}`}
+                                            onClick={() => markAsRead(notification.id)}
+                                            className={`px-4 py-3 border-b border-gray-100 hover:bg-gray-50 transition-colors duration-200 cursor-pointer ${notification.isRead ? '' : 'bg-blue-50'}`}
                                         >
                                             <p className="text-sm font-medium">{notification.message}</p>
                                             <p className="text-xs text-gray-500 mt-1">{notification.time}</p>

@@ -49,6 +49,7 @@ export const getAllApprovals = async (filters = {}) => {
     if (filters.status) queryParams.append('status', filters.status);
     if (filters.entityType) queryParams.append('entityType', filters.entityType);
     if (filters.role) queryParams.append('role', filters.role);
+    if (filters.relatedEntity) queryParams.append('relatedEntity', filters.relatedEntity);
     if (filters.page) queryParams.append('page', filters.page);
     if (filters.limit) queryParams.append('limit', filters.limit);
     

@@ -121,6 +121,37 @@ blockchainController.initializeService();
 
 /**
  * @swagger
+ * /api/blockchain/orders:
+ *   get:
+ *     summary: List all blockchain orders
+ *     description: Returns all blockchain orders by fetching details from DB and blockchain
+ *     tags: [Blockchain]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of blockchain orders
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 orders:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       dbOrder:
+ *                         type: object
+ *                       blockchainOrder:
+ *                         type: object
+ */
+router.get('/orders', blockchainController.listAllBlockchainOrders);
+
+/**
+ * @swagger
  * /api/blockchain/place-order:
  *   post:
  *     summary: Place order with AI fraud detection
