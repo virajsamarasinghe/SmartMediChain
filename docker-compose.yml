@@ -12,7 +12,7 @@ services:
     networks:
       - smc-net
     healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      test: [ "CMD", "mongosh", "--eval", "db.adminCommand('ping')" ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -39,9 +39,9 @@ services:
       - BCRYPT_SALT_ROUNDS=12
       - RATE_LIMIT_WINDOW_MS=900000
       - RATE_LIMIT_MAX=100
+
       - CORS_ORIGIN=http://135.235.193.242:3000
-      - SMART_CONTRACT_ADDRESS=0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
-      - CONTRACT_ADDRESS=0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0
+
       - BLOCKCHAIN_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80
       - LOG_LEVEL=info
     depends_on:
@@ -116,6 +116,7 @@ services:
 volumes:
   mongo_data:
   smart_contract_artifacts:
+
 
 networks:
   smc-net:
