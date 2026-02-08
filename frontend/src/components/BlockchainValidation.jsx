@@ -5,6 +5,8 @@ import Card from './common/Card';
 const BlockchainValidation = () => {
     const [blockchainStatus, setBlockchainStatus] = useState(null);
     const [allBlockchainOrders, setAllBlockchainOrders] = useState([]);
+    const [loadingOrders, setLoadingOrders] = useState(false);
+
 
     useEffect(() => {
         checkBlockchainStatus();
@@ -13,6 +15,7 @@ const BlockchainValidation = () => {
 
     const fetchAllBlockchainOrders = async () => {
         try {
+            setLoadingOrders(true);
             console.log('🔍 Fetching all blockchain orders...');
             const result = await blockchainService.getAllBlockchainOrders();
             console.log('📦 Result:', result);
@@ -26,8 +29,12 @@ const BlockchainValidation = () => {
         } catch (error) {
             console.error('❌ Error fetching blockchain orders:', error);
             setAllBlockchainOrders([]);
+        } finally {
+            setLoadingOrders(false);
         }
     };
+
+
 
     const checkBlockchainStatus = async () => {
         try {
@@ -67,9 +74,22 @@ const BlockchainValidation = () => {
 
             {/* All Blockchain Orders */}
             <Card>
-                <h3 className="text-lg font-semibold mb-4">All Blockchain Orders</h3>
+                <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-lg font-semibold">All Blockchain Orders</h3>
+                    <button
+                        onClick={fetchAllBlockchainOrders}
+                        disabled={loadingOrders}
+                        className="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:opacity-50 transition-colors"
+                    >
+                        {loadingOrders ? 'Refreshing...' : 'Refresh Orders'}
+                    </button>
+                </div>
+
                 {allBlockchainOrders.length === 0 ? (
-                    <p className="text-gray-500">No blockchain orders found.</p>
+                    <div className="text-center py-8 bg-gray-50 rounded-lg border border-dashed border-gray-300">
+                        <p className="text-gray-500 mb-2">No blockchain orders found.</p>
+                        <p className="text-xs text-gray-400">Place a new order to see it appear here.</p>
+                    </div>
                 ) : (
                     <div className="overflow-x-auto">
                         <table className="min-w-full text-sm border">
@@ -86,14 +106,21 @@ const BlockchainValidation = () => {
                             </thead>
                             <tbody>
                                 {allBlockchainOrders.map((entry, idx) => (
-                                    <tr key={idx} className="border-b">
-                                        <td className="px-3 py-2 border font-mono">{entry.blockchainOrder?.orderId || 'N/A'}</td>
+                                    <tr key={idx} className="border-b hover:bg-gray-50">
+                                        <td className="px-3 py-2 border font-mono text-xs">{entry.blockchainOrder?.orderId || 'N/A'}</td>
                                         <td className="px-3 py-2 border">{entry.blockchainOrder?.medicineName || 'N/A'}</td>
                                         <td className="px-3 py-2 border">{entry.blockchainOrder?.quantity || 'N/A'}</td>
                                         <td className="px-3 py-2 border">{entry.blockchainOrder?.pricePerUnit || 'N/A'}</td>
                                         <td className="px-3 py-2 border">{entry.blockchainOrder?.totalPrice || 'N/A'}</td>
-                                        <td className="px-3 py-2 border">{entry.blockchainOrder?.status || 'N/A'}</td>
-                                        <td className="px-3 py-2 border">{entry.blockchainOrder?.timestamp ? new Date(entry.blockchainOrder.timestamp).toLocaleString() : 'N/A'}</td>
+                                        <td className="px-3 py-2 border">
+                                            <span className={`px-2 py-0.5 rounded-full text-xs ${entry.blockchainOrder?.status === 'APPROVED' ? 'bg-green-100 text-green-800' :
+                                                    entry.blockchainOrder?.status === 'FRAUD_DETECTED' ? 'bg-red-100 text-red-800' :
+                                                        'bg-yellow-100 text-yellow-800'
+                                                }`}>
+                                                {entry.blockchainOrder?.status || 'N/A'}
+                                            </span>
+                                        </td>
+                                        <td className="px-3 py-2 border text-xs text-gray-500">{entry.blockchainOrder?.timestamp ? new Date(entry.blockchainOrder.timestamp).toLocaleString() : 'N/A'}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -101,6 +128,8 @@ const BlockchainValidation = () => {
                     </div>
                 )}
             </Card>
+
+
 
         </div>
     );
