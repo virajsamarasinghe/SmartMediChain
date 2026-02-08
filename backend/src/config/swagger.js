@@ -19,7 +19,7 @@ const options = {
         },
         servers: [
             {
-                url: 'http://localhost:3001',
+                url: 'http://135.235.193.242:3001',
                 description: 'Development server'
             },
             {

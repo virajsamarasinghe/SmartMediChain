@@ -1,18 +1,13 @@
 import axios from 'axios';
 
-// When running in a browser, we need to use the publicly accessible URL
-// Docker service names like 'backend' won't work in browser context
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+// Use the public API URL from .env, fallback to public IP if not set
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://135.235.193.242:3001/api';
 
-// Fix for Docker environment - replace container names with localhost
-const BROWSER_FRIENDLY_URL = API_BASE_URL.replace('http://backend:', 'http://localhost:');
-
-console.log('API Base URL (original):', API_BASE_URL);
-console.log('API Base URL (browser-friendly):', BROWSER_FRIENDLY_URL);
+console.log('API Base URL:', API_BASE_URL);
 
 // Create axios instance with default config
 const apiClient = axios.create({
-  baseURL: BROWSER_FRIENDLY_URL, // Use the browser-friendly URL
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',

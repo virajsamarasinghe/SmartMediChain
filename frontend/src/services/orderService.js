@@ -1,16 +1,13 @@
 import axios from 'axios';
 
 // When running in a browser, we need to use the publicly accessible URL
-const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://135.235.193.242:3001/api';
 
-// Fix for Docker environment - replace container names with localhost
-const BROWSER_FRIENDLY_URL = API_BASE_URL.replace('http://backend:', 'http://localhost:');
-
-console.log('Order Service API Base URL:', BROWSER_FRIENDLY_URL);
+console.log('Order Service API Base URL:', API_BASE_URL);
 
 // Create axios instance with default config
 const apiClient = axios.create({
-  baseURL: BROWSER_FRIENDLY_URL,
+  baseURL: API_BASE_URL,
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -38,7 +35,7 @@ apiClient.interceptors.response.use(
   },
   (error) => {
     console.error('Order Service Error:', error.response?.data || error.message);
-    
+
     if (error.response) {
       if (error.response.status === 401) {
         console.error('Authentication error: User not authenticated or token expired');
